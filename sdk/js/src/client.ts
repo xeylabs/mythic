@@ -5,8 +5,8 @@ import { solve } from "./pow";
 import { collectSignals } from "./signals";
 import type { Challenge, ClientSignals, Decision, Solution, VerifyResult } from "./types";
 
-export interface XProtectOptions {
-  /** XProtect server base URL, e.g. "https://protect.example.com". */
+export interface MythicOptions {
+  /** Mythic server base URL, e.g. "https://protect.example.com". */
   endpoint: string;
   /** Site key issued for your site (allowlisted server-side). */
   siteKey: string;
@@ -14,7 +14,7 @@ export interface XProtectOptions {
   signal?: AbortSignal;
 }
 
-export class XProtectError extends Error {
+export class MythicError extends Error {
   constructor(
     /** Machine-readable error code from the API (e.g. "invalid_solution"). */
     public readonly code: string,
@@ -23,7 +23,7 @@ export class XProtectError extends Error {
     public readonly status?: number,
   ) {
     super(message);
-    this.name = "XProtectError";
+    this.name = "MythicError";
   }
 }
 
@@ -33,8 +33,8 @@ interface ChallengeResponse {
   risk: number;
 }
 
-export class XProtectClient {
-  constructor(private readonly opts: XProtectOptions) {}
+export class MythicClient {
+  constructor(private readonly opts: MythicOptions) {}
 
   private url(path: string): string {
     return `${this.opts.endpoint.replace(/\/+$/, "")}${path}`;
@@ -70,7 +70,7 @@ export class XProtectClient {
   }
 }
 
-async function toError(res: Response): Promise<XProtectError> {
+async function toError(res: Response): Promise<MythicError> {
   let code = "http_error";
   let message = `HTTP ${res.status}`;
   try {
@@ -80,5 +80,5 @@ async function toError(res: Response): Promise<XProtectError> {
   } catch {
     // non-JSON body — keep defaults
   }
-  return new XProtectError(code, message, res.status);
+  return new MythicError(code, message, res.status);
 }

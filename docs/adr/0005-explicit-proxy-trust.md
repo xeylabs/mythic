@@ -17,14 +17,14 @@ every request looked like a brand-new visitor.
 ## Decision
 
 `X-Forwarded-For` is ignored unless the operator explicitly opts in with
-`XPROTECT_TRUST_PROXY=1`. Default derives the client IP from `RemoteAddr`
+`MYTHIC_TRUST_PROXY=1`. Default derives the client IP from `RemoteAddr`
 only.
 
 ## Consequences
 
 - Secure by default: header spoofing buys an attacker nothing on a directly
-  exposed xprotectd.
-- Proxy deployments must set `XPROTECT_TRUST_PROXY=1` **and** ensure the
+  exposed mythicd.
+- Proxy deployments must set `MYTHIC_TRUST_PROXY=1` **and** ensure the
   proxy overwrites (not appends to) `X-Forwarded-For`; otherwise the first
   value is still attacker-chosen.
 - Regression tests pin both sides: spoofing cannot bypass the limiter with

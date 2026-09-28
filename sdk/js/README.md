@@ -1,12 +1,12 @@
-# @xeylabs/xprotect
+# @xeylabs/mythic
 
-XProtect client SDK — adaptive proof-of-work, advisory signal collection, and
+Mythic client SDK — adaptive proof-of-work, advisory signal collection, and
 signed decision tokens, for browsers and Node ≥ 18. Zero runtime dependencies.
 
 ```ts
-import { XProtectClient } from "@xeylabs/xprotect";
+import { MythicClient } from "@xeylabs/mythic";
 
-const xp = new XProtectClient({
+const xp = new MythicClient({
   endpoint: "https://protect.example.com",
   siteKey: "my-site-key",
 });
@@ -23,7 +23,7 @@ because the grind only checks between iterations:
 
 ```ts
 // worker.ts
-import { solve } from "@xeylabs/xprotect";
+import { solve } from "@xeylabs/mythic";
 
 self.onmessage = async (e) => {
   const solution = await solve(e.data.challenge);
@@ -44,8 +44,8 @@ only forfeits the discount honest reports earn.
 
 | Export | Purpose |
 |---|---|
-| `XProtectClient` | `requestChallenge()`, `verify()`, `getToken()` |
-| `XProtectError` | Typed errors with API `code` and `status` |
+| `MythicClient` | `requestChallenge()`, `verify()`, `getToken()` |
+| `MythicError` | Typed errors with API `code` and `status` |
 | `solve(ch, opts)` | PoW grind (Web Crypto SHA-256) |
 | `leadingZeroBits(sum)` | Difficulty check primitive |
 | `collectSignals()` | Advisory hint collection |
@@ -59,5 +59,5 @@ bun test
 bun run build
 ```
 
-License: AGPL-3.0-or-later — the whole XProtect project ships under one
+License: AGPL-3.0-or-later — the whole Mythic project ships under one
 license; see [LICENSE](../../LICENSE) at the repository root.

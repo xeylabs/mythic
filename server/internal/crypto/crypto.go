@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 xeylabs
 
 // Package crypto holds the Ed25519 key manager and token signing used by
-// xprotectd. Verification lives in the public xtoken package so origins can
+// mythicd. Verification lives in the public xtoken package so origins can
 // verify without importing server internals.
 package crypto
 
@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/xtoken"
+	"github.com/xeylabs/mythic/server/xtoken"
 )
 
 // KeyManager owns the Ed25519 signing key. Seeds are 32 bytes on disk (0600);

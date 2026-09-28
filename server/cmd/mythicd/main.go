@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 xeylabs
 
-// xprotectd is the XProtect edge server: adaptive proof-of-work challenges,
+// mythicd is the Mythic edge server: adaptive proof-of-work challenges,
 // rule-based risk scoring, and Ed25519-signed decision tokens.
 package main
 
@@ -15,11 +15,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/internal/api"
-	"github.com/xeylabs/xprotect/server/internal/config"
-	"github.com/xeylabs/xprotect/server/internal/crypto"
-	"github.com/xeylabs/xprotect/server/internal/risk"
-	"github.com/xeylabs/xprotect/server/internal/store"
+	"github.com/xeylabs/mythic/server/internal/api"
+	"github.com/xeylabs/mythic/server/internal/config"
+	"github.com/xeylabs/mythic/server/internal/crypto"
+	"github.com/xeylabs/mythic/server/internal/risk"
+	"github.com/xeylabs/mythic/server/internal/store"
 )
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 	if len(cfg.Sites) == 0 {
-		log.Warn("no XPROTECT_SITES configured: any site key is accepted (dev mode)")
+		log.Warn("no MYTHIC_SITES configured: any site key is accepted (dev mode)")
 	}
 
 	st := store.NewMemory(cfg.ChallengeTTL)
@@ -58,7 +58,7 @@ func main() {
 	defer stop()
 
 	go func() {
-		log.Info("xprotectd listening", "addr", cfg.Addr, "kid", km.KeyID())
+		log.Info("mythicd listening", "addr", cfg.Addr, "kid", km.KeyID())
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("server error", "err", err)
 			stop()

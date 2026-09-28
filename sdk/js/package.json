@@ -1,12 +1,12 @@
 {
-  "name": "@xeylabs/xprotect",
+  "name": "@xeylabs/mythic",
   "version": "0.1.0",
-  "description": "XProtect client SDK: adaptive proof-of-work, advisory signal collection, signed decision tokens.",
+  "description": "Mythic client SDK: adaptive proof-of-work, advisory signal collection, signed decision tokens.",
   "license": "AGPL-3.0-or-later",
   "author": "xeylabs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xeylabs/xprotect.git",
+    "url": "git+https://github.com/xeylabs/mythic.git",
     "directory": "sdk/js"
   },
   "type": "module",

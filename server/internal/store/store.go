@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/internal/challenge"
+	"github.com/xeylabs/mythic/server/internal/challenge"
 )
 
 type record struct {
@@ -23,7 +23,7 @@ type counter struct {
 	start time.Time
 }
 
-// Store is the persistence surface of xprotectd.
+// Store is the persistence surface of mythicd.
 type Store interface {
 	Put(ch *challenge.Challenge, issuedAt time.Time)
 	Get(id string) (*challenge.Challenge, time.Time, bool)

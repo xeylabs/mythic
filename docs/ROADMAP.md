@@ -4,7 +4,7 @@ Status markers: ✅ shipped · 🚧 in progress · 📋 planned.
 
 ## M0 — Skeleton (current)
 
-- ✅ xprotectd: challenge/verify API, JWKS, health
+- ✅ mythicd: challenge/verify API, JWKS, health
 - ✅ Adaptive SHA-256 proof-of-work with plausibility floors
 - ✅ Deterministic risk engine (solve-time, per-IP pressure, capped advisory hints)
 - ✅ Ed25519 decision tokens + origin-side `xtoken` verification package

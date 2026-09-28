@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Found a **security bypass**? Do not report it here — use
-        [private vulnerability reporting](https://github.com/xeylabs/xprotect/security/advisories/new).
+        [private vulnerability reporting](https://github.com/xeylabs/mythic/security/advisories/new).
   - type: textarea
     id: what
     attributes:
@@ -19,7 +19,7 @@ body:
     attributes:
       label: Component
       options:
-        - server (xprotectd)
+        - server (mythicd)
         - sdk/js
         - docs
         - other

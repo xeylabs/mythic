@@ -11,10 +11,10 @@ lint:
 	cd server && test -z "$$(gofmt -l .)" && go vet ./...
 
 run:
-	cd server && go run ./cmd/xprotectd
+	cd server && go run ./cmd/mythicd
 
 docker:
-	docker build -t xeylabs/xprotect .
+	docker build -t xeylabs/mythic .
 
 sdk:
 	cd sdk/js && bun run build

@@ -6,7 +6,7 @@ package config
 import (
 	"testing"
 
-	"github.com/xeylabs/xprotect/server/internal/risk"
+	"github.com/xeylabs/mythic/server/internal/risk"
 )
 
 func TestFromEnvDefaults(t *testing.T) {
@@ -27,13 +27,13 @@ func TestFromEnvDefaults(t *testing.T) {
 }
 
 func TestFromEnvOverrides(t *testing.T) {
-	t.Setenv("XPROTECT_ADDR", ":9090")
-	t.Setenv("XPROTECT_TRUST_PROXY", "1")
-	t.Setenv("XPROTECT_BASE_DIFFICULTY", "22")
-	t.Setenv("XPROTECT_MAX_DIFFICULTY", "30")
-	t.Setenv("XPROTECT_DENY_AT", "90")
-	t.Setenv("XPROTECT_SITES", " alpha, beta ,,")
-	t.Setenv("XPROTECT_IP_LIMIT", "7")
+	t.Setenv("MYTHIC_ADDR", ":9090")
+	t.Setenv("MYTHIC_TRUST_PROXY", "1")
+	t.Setenv("MYTHIC_BASE_DIFFICULTY", "22")
+	t.Setenv("MYTHIC_MAX_DIFFICULTY", "30")
+	t.Setenv("MYTHIC_DENY_AT", "90")
+	t.Setenv("MYTHIC_SITES", " alpha, beta ,,")
+	t.Setenv("MYTHIC_IP_LIMIT", "7")
 
 	cfg := FromEnv()
 	if cfg.Addr != ":9090" {

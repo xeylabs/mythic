@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/xeylabs/xprotect/server/internal/challenge"
+	"github.com/xeylabs/mythic/server/internal/challenge"
 )
 
 type Decision string

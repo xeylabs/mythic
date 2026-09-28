@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 xeylabs
 
-// Package api wires the HTTP surface of xprotectd: challenge issuance,
+// Package api wires the HTTP surface of mythicd: challenge issuance,
 // solution verification, JWKS, and health — behind shared middleware.
 package api
 
@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/internal/challenge"
-	"github.com/xeylabs/xprotect/server/internal/crypto"
-	"github.com/xeylabs/xprotect/server/internal/risk"
-	"github.com/xeylabs/xprotect/server/internal/store"
-	"github.com/xeylabs/xprotect/server/xtoken"
+	"github.com/xeylabs/mythic/server/internal/challenge"
+	"github.com/xeylabs/mythic/server/internal/crypto"
+	"github.com/xeylabs/mythic/server/internal/risk"
+	"github.com/xeylabs/mythic/server/internal/store"
+	"github.com/xeylabs/mythic/server/xtoken"
 )
 
 // Config carries deployment settings into the API layer.

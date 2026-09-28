@@ -47,8 +47,8 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 | Distributed attack (fresh IPs per request) | Per-IP counters only — weak by design in v0 | Honest gap: needs IP reputation, JA4+ TLS fingerprint, ASN scoring (M1/M3) |
 | Solve-farm relay (human solves in browser farm) | Server-side solve-time floor vs. round-trip latency | Behavioral biometrics (M2); cryptographic step-up for high-value actions (M4) |
 | Client-hint forgery ("I'm human, honest") | Hints are advisory with hard weight caps; denying `webdriver:true` in a bot just forfeits a discount | — |
-| Risk-engine bypass via unknown site key | Site-key allowlist (`XPROTECT_SITES`) | — |
-| Flood xprotectd itself (DoS) | Per-IP rate limit; stateless handlers | CDN in front; PoW itself is the anti-flood cost (M3: stricter floors under load) |
+| Risk-engine bypass via unknown site key | Site-key allowlist (`MYTHIC_SITES`) | — |
+| Flood mythicd itself (DoS) | Per-IP rate limit; stateless handlers | CDN in front; PoW itself is the anti-flood cost (M3: stricter floors under load) |
 | Signing-key theft | Seed `0600` on disk, git-ignored, env-configured | Key rotation via multi-key JWKS (M1); HSM (M5) |
 
 ## Explicit non-goals
@@ -61,14 +61,14 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 
 ## Honest limitations of v0
 
-- In-memory store binds xprotectd to one node; restarts orphan issued challenges.
+- In-memory store binds mythicd to one node; restarts orphan issued challenges.
 - Server-observed signals are thin: solve-time plausibility and per-IP pressure.
   The behavioral and network-fingerprint layers are roadmap, not reality —
   until they ship, a stealth browser with a native solver beats v0.
 - Client hints are trivially forgeable. That is *by design* — they exist to
   cheaply classify the honest majority of casual bots, never to decide alone.
 - Failure mode is configurable per deployment: the store lives inside the
-  process, so an xprotectd outage fails closed for protected flows.
+  process, so an mythicd outage fails closed for protected flows.
 
 ## Review triggers
 

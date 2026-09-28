@@ -38,10 +38,10 @@ export interface SolveOptions {
  */
 export async function solve(ch: Challenge, opts: SolveOptions = {}): Promise<Solution> {
   if (ch.algorithm !== "sha256") {
-    throw new Error(`xprotect: unsupported algorithm ${ch.algorithm}`);
+    throw new Error(`mythic: unsupported algorithm ${ch.algorithm}`);
   }
   if (!Number.isInteger(ch.difficulty) || ch.difficulty < 0 || ch.difficulty > 32) {
-    throw new Error(`xprotect: implausible difficulty ${ch.difficulty}`);
+    throw new Error(`mythic: implausible difficulty ${ch.difficulty}`);
   }
   const encoder = new TextEncoder();
   const prefix = `${ch.id}:${ch.salt}:`;

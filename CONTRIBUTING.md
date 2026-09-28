@@ -1,4 +1,4 @@
-# Contributing to XProtect
+# Contributing to Mythic
 
 Thanks for your interest — bypass reports, signal ideas, and code are all welcome.
 

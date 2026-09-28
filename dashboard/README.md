@@ -9,5 +9,5 @@ Planned scope:
 - Rule visibility: which signals fired and why (scores are already deterministic — the dashboard makes them auditable)
 - Signing key rotation workflow
 
-Stack: React + TypeScript + Vite, consuming the xprotectd admin API (to be
+Stack: React + TypeScript + Vite, consuming the mythicd admin API (to be
 designed in an ADR before implementation).

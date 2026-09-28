@@ -1,6 +1,6 @@
 # Architecture
 
-XProtect is a small set of moving parts held together by one invariant:
+Mythic is a small set of moving parts held together by one invariant:
 **the decision is always made server-side.**
 
 ## Components
@@ -8,11 +8,11 @@ XProtect is a small set of moving parts held together by one invariant:
 ```mermaid
 flowchart LR
     subgraph client["Visitor's browser"]
-        S[site app] --> SDK["XProtect SDK (JS)"]
+        S[site app] --> SDK["Mythic SDK (JS)"]
         SDK --> W["PoW solver\n(Web Crypto)"]
     end
 
-    subgraph edge["xprotectd (Go)"]
+    subgraph edge["mythicd (Go)"]
         API[HTTP API\n/v1/*] --> RE[Risk Engine]
         RE --> CI[Challenge Issuer]
         CI --> ST[(Store: single-use\nchallenges, IP counters)]
@@ -51,7 +51,7 @@ flowchart LR
    decision token, deny traffic gets `403`.
 4. **Origin verification** — the protected backend verifies the token against
    the public key (fetched once from `jwks.json`) *locally*: signature, expiry,
-   site key, decision. No round-trip to XProtect.
+   site key, decision. No round-trip to Mythic.
 
 ## Crypto design
 
@@ -62,7 +62,7 @@ flowchart LR
   the JWKS endpoint advertises the active key. Multi-key JWKS is the planned
   mechanism for zero-downtime rotation.
 - **Seeds**: the Ed25519 seed is generated at first start and written to
-  `XPROTECT_KEY_FILE` with `0600`. Seeds are git-ignored (`.gitignore` blocks
+  `MYTHIC_KEY_FILE` with `0600`. Seeds are git-ignored (`.gitignore` blocks
   `*.seed` and `data/`).
 
 ## Trust boundaries
@@ -93,7 +93,7 @@ hints carry bounded weight (ADR-0004).
 
 ```
 server/
-├── cmd/xprotectd/     entrypoint: config from env, graceful shutdown
+├── cmd/mythicd/     entrypoint: config from env, graceful shutdown
 ├── internal/api/      HTTP handlers + middleware
 ├── internal/challenge/  PoW definition, validation, plausibility floor
 ├── internal/config/   environment configuration

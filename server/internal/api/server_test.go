@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/internal/api"
-	"github.com/xeylabs/xprotect/server/internal/challenge"
-	"github.com/xeylabs/xprotect/server/internal/crypto"
-	"github.com/xeylabs/xprotect/server/internal/risk"
-	"github.com/xeylabs/xprotect/server/internal/store"
-	"github.com/xeylabs/xprotect/server/xtoken"
+	"github.com/xeylabs/mythic/server/internal/api"
+	"github.com/xeylabs/mythic/server/internal/challenge"
+	"github.com/xeylabs/mythic/server/internal/crypto"
+	"github.com/xeylabs/mythic/server/internal/risk"
+	"github.com/xeylabs/mythic/server/internal/store"
+	"github.com/xeylabs/mythic/server/xtoken"
 )
 
 func newTestServer(t *testing.T) (*httptest.Server, ed25519.PublicKey) {

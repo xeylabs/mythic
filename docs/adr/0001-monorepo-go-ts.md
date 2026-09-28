@@ -5,16 +5,16 @@
 
 ## Context
 
-XProtect needs a server (challenge issuance, risk engine, token signing) and
+Mythic needs a server (challenge issuance, risk engine, token signing) and
 client SDKs (PoW solving, signal collection). Options: separate repositories
 per component, or a single monorepo.
 
 ## Decision
 
-One repository, `xeylabs/xprotect`, containing:
+One repository, `xeylabs/mythic`, containing:
 
-- `server/` — Go module `github.com/xeylabs/xprotect/server`
-- `sdk/js/` — npm package `@xeylabs/xprotect`
+- `server/` — Go module `github.com/xeylabs/mythic/server`
+- `sdk/js/` — npm package `@xeylabs/mythic`
 - `dashboard/`, `docs/` as siblings
 
 ## Consequences

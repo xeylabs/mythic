@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/internal/crypto"
+	"github.com/xeylabs/mythic/server/internal/crypto"
 )
 
 // statusRecorder captures the response status for access logging.
@@ -74,7 +74,7 @@ func (s *Server) logRequests() middleware {
 // cors sets CORS headers. With no configured origins it allows any origin on
 // the public /v1 surface — the API never uses cookies or credentials, so the
 // ambient-authority CSRF class does not apply. Restrict origins in production
-// via XPROTECT_CORS_ORIGINS (see SECURITY.md).
+// via MYTHIC_CORS_ORIGINS (see SECURITY.md).
 func cors(allowed []string) middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

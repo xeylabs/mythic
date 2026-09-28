@@ -6,7 +6,7 @@ package risk_test
 import (
 	"testing"
 
-	"github.com/xeylabs/xprotect/server/internal/risk"
+	"github.com/xeylabs/mythic/server/internal/risk"
 )
 
 func engine() *risk.Engine { return risk.New(risk.DefaultConfig()) }

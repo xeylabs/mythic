@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 xeylabs
 
-/** Verdict issued by the XProtect risk engine. */
+/** Verdict issued by the Mythic risk engine. */
 export type Decision = "allow" | "challenge" | "deny";
 
-/** A proof-of-work challenge issued by xprotectd. */
+/** A proof-of-work challenge issued by mythicd. */
 export interface Challenge {
   id: string;
   site_key: string;

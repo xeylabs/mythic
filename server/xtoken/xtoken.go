@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 xeylabs
 
-// Package xtoken verifies XProtect decision tokens on origin backends.
+// Package xtoken verifies Mythic decision tokens on origin backends.
 //
 // It is a public package (importable as
-// github.com/xeylabs/xprotect/server/xtoken) so protected services can verify
-// tokens locally, without any dependency on the xprotectd runtime:
+// github.com/xeylabs/mythic/server/xtoken) so protected services can verify
+// tokens locally, without any dependency on the mythicd runtime:
 //
 //	pub, err := xtoken.ParsePublicKey(jwkX)
 //	claims, err := xtoken.VerifyToken(pub, token)
@@ -60,7 +60,7 @@ func ParsePublicKey(x string) (ed25519.PublicKey, error) {
 
 // VerifyToken checks the signature and expiry of a decision token and returns
 // its claims. Callers must still enforce site key and decision per their own
-// policy — verification only proves xprotectd signed these claims.
+// policy — verification only proves mythicd signed these claims.
 func VerifyToken(pub ed25519.PublicKey, token string) (*TokenClaims, error) {
 	payloadPart, sigPart, ok := strings.Cut(token, ".")
 	if !ok {

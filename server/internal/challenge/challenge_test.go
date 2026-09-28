@@ -6,7 +6,7 @@ package challenge_test
 import (
 	"testing"
 
-	"github.com/xeylabs/xprotect/server/internal/challenge"
+	"github.com/xeylabs/mythic/server/internal/challenge"
 )
 
 func TestLeadingZeroBits(t *testing.T) {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 xeylabs
 
-// Package config loads xprotectd configuration from the environment.
+// Package config loads mythicd configuration from the environment.
 package config
 
 import (
@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/internal/risk"
+	"github.com/xeylabs/mythic/server/internal/risk"
 )
 
-// Config is the full runtime configuration of xprotectd.
+// Config is the full runtime configuration of mythicd.
 type Config struct {
 	Addr         string
 	KeyFile      string        // Ed25519 seed path; empty = ephemeral in-memory key
@@ -31,19 +31,19 @@ type Config struct {
 
 func FromEnv() Config {
 	c := Config{
-		Addr:         env("XPROTECT_ADDR", ":8080"),
-		KeyFile:      env("XPROTECT_KEY_FILE", ""),
-		Sites:        splitCSV(env("XPROTECT_SITES", "")),
-		CORSOrigins:  splitCSV(env("XPROTECT_CORS_ORIGINS", "")),
-		ChallengeTTL: envDur("XPROTECT_CHALLENGE_TTL", 3*time.Minute),
-		TokenTTL:     envDur("XPROTECT_TOKEN_TTL", 5*time.Minute),
-		IPWindow:     envDur("XPROTECT_IP_WINDOW", time.Minute),
-		IPLimit:      envInt64("XPROTECT_IP_LIMIT", 120),
-		TrustProxy:   envBool("XPROTECT_TRUST_PROXY"),
+		Addr:         env("MYTHIC_ADDR", ":8080"),
+		KeyFile:      env("MYTHIC_KEY_FILE", ""),
+		Sites:        splitCSV(env("MYTHIC_SITES", "")),
+		CORSOrigins:  splitCSV(env("MYTHIC_CORS_ORIGINS", "")),
+		ChallengeTTL: envDur("MYTHIC_CHALLENGE_TTL", 3*time.Minute),
+		TokenTTL:     envDur("MYTHIC_TOKEN_TTL", 5*time.Minute),
+		IPWindow:     envDur("MYTHIC_IP_WINDOW", time.Minute),
+		IPLimit:      envInt64("MYTHIC_IP_LIMIT", 120),
+		TrustProxy:   envBool("MYTHIC_TRUST_PROXY"),
 		Risk:         riskConfig(),
 		LogLevel:     slog.LevelInfo,
 	}
-	if env("XPROTECT_LOG_LEVEL", "") == "debug" {
+	if env("MYTHIC_LOG_LEVEL", "") == "debug" {
 		c.LogLevel = slog.LevelDebug
 	}
 	return c
@@ -108,13 +108,13 @@ func envBool(key string) bool {
 // of the engine, not necessarily the numbers any real deployment runs.
 func riskConfig() risk.Config {
 	c := risk.DefaultConfig()
-	c.BaseDifficulty = int(envInt64("XPROTECT_BASE_DIFFICULTY", int64(c.BaseDifficulty)))
-	c.MaxDifficulty = int(envInt64("XPROTECT_MAX_DIFFICULTY", int64(c.MaxDifficulty)))
-	c.DenyAt = int(envInt64("XPROTECT_DENY_AT", int64(c.DenyAt)))
-	c.HeavyAt = int(envInt64("XPROTECT_HEAVY_AT", int64(c.HeavyAt)))
-	c.StepUpAt = int(envInt64("XPROTECT_STEP_UP_AT", int64(c.StepUpAt)))
-	c.FastSolvePenalty = int(envInt64("XPROTECT_FAST_SOLVE_PENALTY", int64(c.FastSolvePenalty)))
-	c.PressurePerReq = int(envInt64("XPROTECT_PRESSURE_PER_REQ", int64(c.PressurePerReq)))
-	c.PressureMax = int(envInt64("XPROTECT_PRESSURE_MAX", int64(c.PressureMax)))
+	c.BaseDifficulty = int(envInt64("MYTHIC_BASE_DIFFICULTY", int64(c.BaseDifficulty)))
+	c.MaxDifficulty = int(envInt64("MYTHIC_MAX_DIFFICULTY", int64(c.MaxDifficulty)))
+	c.DenyAt = int(envInt64("MYTHIC_DENY_AT", int64(c.DenyAt)))
+	c.HeavyAt = int(envInt64("MYTHIC_HEAVY_AT", int64(c.HeavyAt)))
+	c.StepUpAt = int(envInt64("MYTHIC_STEP_UP_AT", int64(c.StepUpAt)))
+	c.FastSolvePenalty = int(envInt64("MYTHIC_FAST_SOLVE_PENALTY", int64(c.FastSolvePenalty)))
+	c.PressurePerReq = int(envInt64("MYTHIC_PRESSURE_PER_REQ", int64(c.PressurePerReq)))
+	c.PressureMax = int(envInt64("MYTHIC_PRESSURE_MAX", int64(c.PressureMax)))
 	return c
 }

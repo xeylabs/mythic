@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/xtoken"
+	"github.com/xeylabs/mythic/server/xtoken"
 )
 
 // This file is the empirical answer to one question: can ANY byte-level

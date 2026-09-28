@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xeylabs/xprotect/server/xtoken"
+	"github.com/xeylabs/mythic/server/xtoken"
 )
 
 func sign(t *testing.T, claims xtoken.TokenClaims, ttl time.Duration, signer ed25519.PrivateKey) string {

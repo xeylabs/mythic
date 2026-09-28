@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to XProtect are documented here.
+All notable changes to Mythic are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
@@ -9,7 +9,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - `server`: risk-engine tuning (difficulty floors and decision thresholds)
-  is now deployment-side configuration via `XPROTECT_*` environment
+  is now deployment-side configuration via `MYTHIC_*` environment
   variables — the public defaults are a starting point, each deployment's
   operating margins stay private.
 - `CLA.md`: contributor license agreement keeping the codebase free to
@@ -19,7 +19,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   (deny→allow, risk, site key, expiry) with the original signature (all
   rejected), cross-key verification matrix, and a native fuzz target
   (`FuzzVerifyToken`) that runs a short pass in CI on every push.
-- `server`: xprotectd — challenge issuance, adaptive SHA-256 proof-of-work,
+- `server`: mythicd — challenge issuance, adaptive SHA-256 proof-of-work,
   rule-based risk engine (solve-time plausibility, per-IP pressure), Ed25519
   signed decision tokens, JWKS endpoint, per-IP rate limiting.
 - `server/xtoken`: origin-side token verification package (local, no callback).
@@ -35,7 +35,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
-- `server`: **X-Forwarded-For is ignored unless `XPROTECT_TRUST_PROXY=1`**.
+- `server`: **X-Forwarded-For is ignored unless `MYTHIC_TRUST_PROXY=1`**.
   An adversarial session against a live server showed blind XFF trust let a
   rotating fake header bypass the per-IP rate limiter 20/20 and erase the
   risk engine's pressure signal. Default now uses RemoteAddr only; regression
