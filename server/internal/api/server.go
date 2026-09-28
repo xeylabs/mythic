@@ -25,6 +25,11 @@ type Config struct {
 	ChallengeTTL time.Duration
 	IPWindow     time.Duration
 	IPLimit      int64
+	// TrustProxy opts into honoring X-Forwarded-For. The header is
+	// client-controlled; trusting it blindly lets anyone rotate fake IPs and
+	// bypass per-IP rate limits and risk pressure (ADR-0005). Enable only
+	// behind a proxy that overwrites the header.
+	TrustProxy bool
 }
 
 type Server struct {
@@ -92,7 +97,7 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := clientIP(r)
+	ip := clientIP(r, s.cfg.TrustProxy)
 	attempts := s.st.IncrIP(ip, s.cfg.IPWindow)
 	if attempts > s.cfg.IPLimit {
 		w.Header().Set("Retry-After", "30")
@@ -143,7 +148,7 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := clientIP(r)
+	ip := clientIP(r, s.cfg.TrustProxy)
 	attempts := s.st.IncrIP(ip, s.cfg.IPWindow)
 
 	// Single-use consumption happens before validation: a replayed or expired
@@ -221,14 +226,18 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]string{"error": code, "message": message})
 }
 
-// clientIP prefers X-Forwarded-For (first hop) and falls back to RemoteAddr.
-// Only trust this header behind a proxy you control — see SECURITY.md.
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.IndexByte(xff, ','); i > 0 {
-			return strings.TrimSpace(xff[:i])
+// clientIP derives the client address. X-Forwarded-For is honored ONLY when
+// the operator explicitly opts in via TrustProxy — the header is
+// client-controlled, and blind trust made it a free rate-limit and
+// risk-pressure bypass (found by adversarial testing, fixed per ADR-0005).
+func clientIP(r *http.Request, trustProxy bool) string {
+	if trustProxy {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			if i := strings.IndexByte(xff, ','); i > 0 {
+				return strings.TrimSpace(xff[:i])
+			}
+			return strings.TrimSpace(xff)
 		}
-		return strings.TrimSpace(xff)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

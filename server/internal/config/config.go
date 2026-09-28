@@ -19,6 +19,7 @@ type Config struct {
 	TokenTTL     time.Duration // lifetime of signed decision tokens
 	IPWindow     time.Duration // per-IP request-pressure window
 	IPLimit      int64         // max requests per IP inside IPWindow
+	TrustProxy   bool          // honor X-Forwarded-For; enable ONLY behind a proxy that overwrites it
 	LogLevel     slog.Level
 }
 
@@ -32,6 +33,7 @@ func FromEnv() Config {
 		TokenTTL:     envDur("XPROTECT_TOKEN_TTL", 5*time.Minute),
 		IPWindow:     envDur("XPROTECT_IP_WINDOW", time.Minute),
 		IPLimit:      envInt64("XPROTECT_IP_LIMIT", 120),
+		TrustProxy:   envBool("XPROTECT_TRUST_PROXY"),
 		LogLevel:     slog.LevelInfo,
 	}
 	if env("XPROTECT_LOG_LEVEL", "") == "debug" {
@@ -83,4 +85,12 @@ func envInt64(key string, def int64) int64 {
 		return def
 	}
 	return n
+}
+
+func envBool(key string) bool {
+	switch strings.ToLower(os.Getenv(key)) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }

@@ -42,6 +42,7 @@ func main() {
 		ChallengeTTL: cfg.ChallengeTTL,
 		IPWindow:     cfg.IPWindow,
 		IPLimit:      cfg.IPLimit,
+		TrustProxy:   cfg.TrustProxy,
 	}, km, st, risk.New(risk.DefaultConfig()), log)
 
 	httpServer := &http.Server{

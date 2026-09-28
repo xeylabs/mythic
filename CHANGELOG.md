@@ -24,6 +24,11 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- `server`: **X-Forwarded-For is ignored unless `XPROTECT_TRUST_PROXY=1`**.
+  An adversarial session against a live server showed blind XFF trust let a
+  rotating fake header bypass the per-IP rate limiter 20/20 and erase the
+  risk engine's pressure signal. Default now uses RemoteAddr only; regression
+  tests pin both modes (ADR-0005).
 - `server/xtoken`: decision tokens now **reject non-canonical base64**.
   Go's decoder silently discards the unused low bits of a trailing character,
   so distinct strings could decode to the same token and verify (e.g. the

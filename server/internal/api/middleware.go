@@ -25,7 +25,7 @@ type middleware func(http.Handler) http.Handler
 // CORS.
 func (s *Server) middleware(next http.Handler) http.Handler {
 	h := cors(s.cfg.CORSOrigins)(next)
-	h = logRequests(s.log)(h)
+	h = s.logRequests()(h)
 	h = recoverPanics(s.log)(h)
 	return requestID(h)
 }
@@ -51,18 +51,18 @@ func recoverPanics(log *slog.Logger) middleware {
 	}
 }
 
-func logRequests(log *slog.Logger) middleware {
+func (s *Server) logRequests() middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(rec, r)
-			log.Info("http",
+			s.log.Info("http",
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", rec.status,
 				"dur_ms", time.Since(start).Milliseconds(),
-				"ip", clientIP(r),
+				"ip", clientIP(r, s.cfg.TrustProxy),
 			)
 		})
 	}

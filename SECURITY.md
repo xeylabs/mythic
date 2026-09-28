@@ -44,7 +44,8 @@ third-party dependencies without a concrete XProtect impact.
 
 ## Hardening checklist before any production use
 
-- [ ] Deploy behind a TLS-terminating proxy that sanitizes `X-Forwarded-For`
+- [ ] Deploy behind a TLS-terminating proxy
+- [ ] Behind a proxy that **overwrites** `X-Forwarded-For`? Set `XPROTECT_TRUST_PROXY=1`. Otherwise leave it unset — the header is client-controlled and ignored by default (ADR-0005)
 - [ ] Set `XPROTECT_SITES` to an explicit site-key allowlist
 - [ ] Restrict `XPROTECT_CORS_ORIGINS` to the origins that embed the SDK
 - [ ] Persist `XPROTECT_KEY_FILE` on durable storage with strict permissions
