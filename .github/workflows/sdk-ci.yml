@@ -1,6 +1,7 @@
 name: sdk-js
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths: ["sdk/js/**", ".github/workflows/sdk-ci.yml"]
