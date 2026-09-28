@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -163,8 +164,20 @@ func TestTamperedTokenRejected(t *testing.T) {
 	_, out := post(t, ts.URL+"/v1/verify", map[string]any{"challenge_id": ch.ID, "nonce": nonce})
 	token, _ := out["token"].(string)
 
-	// Flip the payload and confirm the signature check fails.
-	tampered := token[:len(token)-2] + "AA"
+	// Mutate the payload deterministically: the signed bytes change, so the
+	// Ed25519 signature can no longer match. Overwriting the signature's tail
+	// was flaky — a random signature can already end in the same characters.
+	payload, sig, ok := strings.Cut(token, ".")
+	if !ok {
+		t.Fatal("token must be payload.signature")
+	}
+	mutated := []byte(payload)
+	if mutated[0] == 'B' {
+		mutated[0] = 'C'
+	} else {
+		mutated[0] = 'B'
+	}
+	tampered := string(mutated) + "." + sig
 	if _, err := xtoken.VerifyToken(pub, tampered); err == nil {
 		t.Fatal("tampered token must not verify")
 	}
