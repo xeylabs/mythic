@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 // Package api wires the HTTP surface of xprotectd: challenge issuance,
 // solution verification, JWKS, and health — behind shared middleware.
 package api

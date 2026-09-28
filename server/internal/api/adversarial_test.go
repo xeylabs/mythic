@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 package api_test
 
 // Tests born from adversarial poking of a live server ("chaos session").

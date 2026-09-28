@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 import { solve } from "./pow";
 import { collectSignals } from "./signals";
 import type { Challenge, ClientSignals, Decision, Solution, VerifyResult } from "./types";

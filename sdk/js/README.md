@@ -59,4 +59,5 @@ bun test
 bun run build
 ```
 
-License: AGPL-3.0-or-later — © 2026 xeylabs.
+License: Apache-2.0 (see [LICENSE](LICENSE)). The XProtect server is AGPL-3.0-or-later —
+the SDK is intentionally permissive so any site can embed it.

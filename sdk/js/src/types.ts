@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 /** Verdict issued by the XProtect risk engine. */
 export type Decision = "allow" | "challenge" | "deny";
 

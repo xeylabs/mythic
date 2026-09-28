@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 // xprotectd is the XProtect edge server: adaptive proof-of-work challenges,
 // rule-based risk scoring, and Ed25519-signed decision tokens.
 package main
@@ -43,7 +46,7 @@ func main() {
 		IPWindow:     cfg.IPWindow,
 		IPLimit:      cfg.IPLimit,
 		TrustProxy:   cfg.TrustProxy,
-	}, km, st, risk.New(risk.DefaultConfig()), log)
+	}, km, st, risk.New(cfg.Risk), log)
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,

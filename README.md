@@ -110,6 +110,34 @@ claims, err := xtoken.VerifyToken(publicKey, token) // local, no network call
 | `/v1/.well-known/jwks.json` | GET | Public key (JWKS) for origin-side token verification |
 | `/healthz` | GET | Liveness |
 
+## Configuration
+
+Everything is environment-driven — including the risk-engine tuning, which is
+deliberately deployment-side: defaults are public code, but your operating
+margins are yours (see [ADR-0003](docs/adr/0003-sha256-adaptive-pow.md) and
+[ADR-0005](docs/adr/0005-explicit-proxy-trust.md)).
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `XPROTECT_ADDR` | `:8080` | Listen address |
+| `XPROTECT_KEY_FILE` | ephemeral | Ed25519 seed path (created `0600` on first run) |
+| `XPROTECT_SITES` | any key (dev mode) | Comma-separated site-key allowlist |
+| `XPROTECT_CORS_ORIGINS` | all origins | Comma-separated origins allowed for the browser SDK |
+| `XPROTECT_CHALLENGE_TTL` | `3m` | How long a challenge stays redeemable |
+| `XPROTECT_TOKEN_TTL` | `5m` | Decision token lifetime |
+| `XPROTECT_IP_WINDOW` | `1m` | Per-IP pressure window |
+| `XPROTECT_IP_LIMIT` | `120` | Max requests per IP per window |
+| `XPROTECT_TRUST_PROXY` | `false` | Honor `X-Forwarded-For` — only behind a proxy that overwrites it |
+| `XPROTECT_LOG_LEVEL` | `info` | `info` or `debug` |
+| `XPROTECT_BASE_DIFFICULTY` | `18` | Base PoW difficulty (2^N hashes) |
+| `XPROTECT_MAX_DIFFICULTY` | `26` | Difficulty ceiling |
+| `XPROTECT_STEP_UP_AT` | `30` | Risk score that escalates difficulty |
+| `XPROTECT_HEAVY_AT` | `65` | Risk score that triggers heavy challenge |
+| `XPROTECT_DENY_AT` | `85` | Risk score that denies outright |
+| `XPROTECT_FAST_SOLVE_PENALTY` | `35` | Penalty for implausible solve times |
+| `XPROTECT_PRESSURE_PER_REQ` | `2` | Pressure penalty per excess challenge |
+| `XPROTECT_PRESSURE_MAX` | `30` | Pressure penalty cap |
+
 ## Repository layout
 
 ```
@@ -137,4 +165,15 @@ project can receive.
 
 ## License
 
-XProtect is [AGPL-3.0](LICENSE) licensed — © 2026 xeylabs.
+Split licensing, on purpose:
+
+- **`server/`** (the engine) — [AGPL-3.0-or-later](LICENSE) — © 2026 xeylabs.
+  Copyleft keeps the core open and prevents closed-source SaaS competitors
+  from building on it without contributing back.
+- **`sdk/js/`** (the client) — [Apache-2.0](sdk/js/LICENSE) — deliberately
+  permissive so any site, commercial or not, can embed the widget without
+  license anxiety.
+
+Commercial licensing, hosted deployments, and support arrangements are
+available from [xeylabs](https://github.com/xeylabs). Contributions are
+welcome under [CLA.md](CLA.md).

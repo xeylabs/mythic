@@ -8,6 +8,12 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `server`: risk-engine tuning (difficulty floors and decision thresholds)
+  is now deployment-side configuration via `XPROTECT_*` environment
+  variables — the public defaults are a starting point, each deployment's
+  operating margins stay private.
+- `CLA.md`: contributor license agreement keeping the codebase free to
+  dual-license commercially; PRs carry a CLA checkbox.
 - `server/xtoken`: tamper-resistance property suite — 10,000 deterministic
   byte-mutation attempts per run (all rejected), forged-claim edits
   (deny→allow, risk, site key, expiry) with the original signature (all
@@ -21,6 +27,12 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
   collector, token orchestration.
 - Docs: architecture, threat model, roadmap, ADR-0001…0004.
 - CI: GitHub Actions for server (fmt/vet/test/race) and SDK (typecheck/test/build).
+
+### Changed
+
+- **Licensing split**: `server/` remains AGPL-3.0-or-later; `sdk/js` moved to
+  Apache-2.0 so any site can embed the client without license friction.
+  Source files carry SPDX identifiers.
 
 ### Security
 

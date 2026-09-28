@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 // Package store persists issued challenges (single-use) and per-IP request
 // counters. The v0 implementation is in-process memory; the interface exists
 // so a Redis backend can replace it without touching the API layer.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 // Package risk scores requests and decides what happens next.
 //
 // v0 is deterministic and auditable on purpose: every score bump has a named

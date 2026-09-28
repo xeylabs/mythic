@@ -30,6 +30,8 @@ bun run typecheck && bun test && bun run build
    wire format, storage model, or crypto, add `docs/adr/NNNN-*.md` first.
 5. Conventional Commits (`feat(server): …`, `fix(sdk): …`) keep the changelog
    and releases mechanical.
+6. **First contribution?** Read [CLA.md](CLA.md) — the PR template carries a
+   checkbox, that's the whole signing ceremony.
 
 ## Pull request checklist
 

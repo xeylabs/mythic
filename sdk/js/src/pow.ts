@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 import type { Challenge, Solution } from "./types";
 
 /** SHA-256 over bytes, using the platform Web Crypto (browser and Node ≥18). */

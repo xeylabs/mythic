@@ -2,7 +2,7 @@
   "name": "@xeylabs/xprotect",
   "version": "0.1.0",
   "description": "XProtect client SDK: adaptive proof-of-work, advisory signal collection, signed decision tokens.",
-  "license": "AGPL-3.0-or-later",
+  "license": "Apache-2.0",
   "author": "xeylabs",
   "repository": {
     "type": "git",

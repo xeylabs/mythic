@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 xeylabs
+
 // Package xtoken verifies XProtect decision tokens on origin backends.
 //
 // It is a public package (importable as

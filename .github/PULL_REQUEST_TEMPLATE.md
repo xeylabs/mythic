@@ -8,6 +8,7 @@
 
 ## Checklist
 
+- [ ] I have read and agree to [CLA.md](../../CLA.md)
 - [ ] `go vet ./... && go test ./... -race` green (server)
 - [ ] `bun run typecheck && bun test && bun run build` green (SDK)
 - [ ] `gofmt` clean
