@@ -1,0 +1,33 @@
+name: Bug report
+description: Something is broken — a crash, a wrong decision, a misbehaving signal.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Found a **security bypass**? Do not report it here — use
+        [private vulnerability reporting](https://github.com/xeylabs/xprotect/security/advisories/new).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include reproduction steps and what you expected instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - server (xprotectd)
+        - sdk/js
+        - docs
+        - other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+    validations:
+      required: true
