@@ -47,3 +47,5 @@ Status markers: ✅ shipped · 🚧 in progress · 📋 planned.
 - 📋 Multi-tenant site management, per-site policies & analytics
 - 📋 Plugins/SDKs: WordPress, Next.js middleware, reverse-proxy module
 - 📋 Security audit + public bug bounty (public launch moment)
+
+<!-- CI trigger note: push events evaluated here -->
