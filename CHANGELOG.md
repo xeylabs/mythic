@@ -30,9 +30,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- **Licensing split**: `server/` remains AGPL-3.0-or-later; `sdk/js` moved to
-  Apache-2.0 so any site can embed the client without license friction.
-  Source files carry SPDX identifiers.
+- **Licensing unified**: the whole project — server and SDK — ships under
+  AGPL-3.0-or-later. Source files carry SPDX identifiers.
 
 ### Security
 

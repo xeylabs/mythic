@@ -25,8 +25,7 @@ this repository, you state and agree that:
    your contribution anywhere else. Nothing here takes anything away from you.
 
 4. **You get it back.** xeylabs licenses your contribution back to you under
-   the Apache License 2.0, so you are never blocked by the terms you
-   contributed under.
+   AGPL-3.0-or-later — and you always retain full rights to your own work.
 
 5. **No warranty.** The contribution is provided "as is", without warranties
    or conditions of any kind.

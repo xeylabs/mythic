@@ -165,14 +165,10 @@ project can receive.
 
 ## License
 
-Split licensing, on purpose:
-
-- **`server/`** (the engine) — [AGPL-3.0-or-later](LICENSE) — © 2026 xeylabs.
-  Copyleft keeps the core open and prevents closed-source SaaS competitors
-  from building on it without contributing back.
-- **`sdk/js/`** (the client) — [Apache-2.0](sdk/js/LICENSE) — deliberately
-  permissive so any site, commercial or not, can embed the widget without
-  license anxiety.
+The whole project — engine, SDK, everything — is
+[AGPL-3.0-or-later](LICENSE) licensed — © 2026 xeylabs. One strong license,
+no exceptions: anyone can use, study, and build on XProtect as long as their
+derivatives stay equally open, including over a network.
 
 Commercial licensing, hosted deployments, and support arrangements are
 available from [xeylabs](https://github.com/xeylabs). Contributions are
