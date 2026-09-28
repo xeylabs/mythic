@@ -1,0 +1,23 @@
+# Runtime state — signing seeds must never be committed
+data/
+*.seed
+
+# Go
+*.exe
+*.test
+*.out
+
+# Node / SDK
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Env & editors
+.env
+.env.*
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
