@@ -29,5 +29,7 @@ jobs:
         run: go vet ./...
       - name: test
         run: go test ./... -race -count=1 -v
+      - name: fuzz token verification (short pass)
+        run: go test ./xtoken -run '^$' -fuzz FuzzVerifyToken -fuzztime 30s
       - name: build
         run: go build -trimpath ./...

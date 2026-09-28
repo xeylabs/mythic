@@ -71,6 +71,15 @@ func VerifyToken(pub ed25519.PublicKey, token string) (*TokenClaims, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: bad signature encoding", ErrInvalidToken)
 	}
+	// Canonical encodings only: re-encoding the decoded bytes must reproduce
+	// the input exactly. Go's base64 decoder silently discards the unused low
+	// bits of a trailing character, so distinct strings can decode to the
+	// same token (e.g. a 64-byte signature's last character carries only 2
+	// data bits). Accepting those would break string-level token identity.
+	if base64.RawURLEncoding.EncodeToString(payload) != payloadPart ||
+		base64.RawURLEncoding.EncodeToString(sig) != sigPart {
+		return nil, fmt.Errorf("%w: non-canonical encoding", ErrInvalidToken)
+	}
 	if !ed25519.Verify(pub, payload, sig) {
 		return nil, fmt.Errorf("%w: signature mismatch", ErrInvalidToken)
 	}
