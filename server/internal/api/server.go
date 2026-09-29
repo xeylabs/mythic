@@ -93,7 +93,14 @@ type attemptsCtxKey struct{}
 func (s *Server) ipLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := clientIP(r, s.cfg.TrustProxy)
-		attempts := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow)
+		attempts, err := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow)
+		if err != nil {
+			// Fail closed (ADR-0009): a store outage must not issue
+			// challenges or tokens from uncounted requests.
+			s.log.Error("store unavailable", "err", err)
+			writeError(w, http.StatusServiceUnavailable, "store_unavailable", "state store is unreachable")
+			return
+		}
 		if attempts > s.cfg.IPLimit {
 			w.Header().Set("Retry-After", "30")
 			writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests from this address")
@@ -167,7 +174,11 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 		Algorithm:  challenge.Algorithm,
 		ExpiresAt:  time.Now().Add(s.cfg.ChallengeTTL).Unix(),
 	}
-	s.st.Put(ch, time.Now())
+	if err := s.st.Put(ch, time.Now()); err != nil {
+		s.log.Error("store unavailable", "err", err)
+		writeError(w, http.StatusServiceUnavailable, "store_unavailable", "state store is unreachable")
+		return
+	}
 	s.log.Debug("challenge issued", "ip", ip, "site", req.SiteKey, "difficulty", ch.Difficulty, "score", res.Score)
 	writeJSON(w, http.StatusOK, challengeResponse{Challenge: ch, Decision: string(res.Decision), Risk: res.Score})
 }
@@ -196,7 +207,12 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 
 	// Single-use consumption happens before validation: a replayed or expired
 	// id burns itself either way.
-	ch, issuedAt, ok := s.st.Take(req.ChallengeID)
+	ch, issuedAt, ok, err := s.st.Take(req.ChallengeID)
+	if err != nil {
+		s.log.Error("store unavailable", "err", err)
+		writeError(w, http.StatusServiceUnavailable, "store_unavailable", "state store is unreachable")
+		return
+	}
 	if !ok {
 		writeError(w, http.StatusBadRequest, "unknown_challenge", "challenge was not issued here or was already redeemed")
 		return

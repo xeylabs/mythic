@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 xeylabs
 
-// Package store persists issued challenges (single-use) and per-IP request
-// counters. The v0 implementation is in-process memory; the interface exists
-// so a Redis backend can replace it without touching the API layer.
+// Package store persists issued challenges (single-use) and per-identity
+// request counters. Two backends implement the same contract: Memory (the
+// zero-deploy single-node default) and Redis (multi-node, ADR-0009). A
+// shared contract suite pins the semantics so the backends cannot drift.
+//
+// Backends report errors instead of swallowing them: mythicd fails CLOSED —
+// a verifier that cannot reach its store must not issue tokens.
 package store
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/xeylabs/mythic/server/internal/challenge"
@@ -18,38 +23,37 @@ type record struct {
 	issuedAt time.Time
 }
 
-type counter struct {
-	n     int64
-	start time.Time
-}
-
-// Store is the persistence surface of mythicd.
+// Store is the persistence surface of mythicd. Counters are sliding-window
+// on every backend (ADR-0009): a hit is counted inside any window of the
+// given length ending now. Errors mean the backend is unavailable — callers
+// fail the request, they never degrade silently.
 type Store interface {
-	Put(ch *challenge.Challenge, issuedAt time.Time)
-	Get(id string) (*challenge.Challenge, time.Time, bool)
-	Take(id string) (*challenge.Challenge, time.Time, bool) // atomic single-use fetch+delete
-	IncrIP(ip string, window time.Duration) int64
+	Put(ch *challenge.Challenge, issuedAt time.Time) error
+	Get(id string) (*challenge.Challenge, time.Time, bool, error)
+	Take(id string) (*challenge.Challenge, time.Time, bool, error) // atomic single-use fetch+delete
+	IncrIP(ip string, window time.Duration) (int64, error)         // sliding-window count including this hit
 	Close()
 }
 
-// Memory is the in-process Store implementation. Challenges expire after ttl;
-// a janitor evicts both expired challenges and stale IP counters.
+// Memory is the in-process Store implementation. Challenges expire after
+// ttl; a janitor evicts expired challenges and stale counter entries.
 type Memory struct {
-	mu       sync.Mutex
-	items    map[string]record
-	counters map[string]*counter
-	ttl      time.Duration
-	stop     chan struct{}
-	done     chan struct{}
+	mu     sync.Mutex
+	items  map[string]record
+	hits   map[string][]time.Time // sliding window: timestamps of recent hits per identity
+	hitSeq atomic.Uint64          // members must be unique even within one nanosecond
+	ttl    time.Duration
+	stop   chan struct{}
+	done   chan struct{}
 }
 
 func NewMemory(ttl time.Duration) *Memory {
 	m := &Memory{
-		items:    make(map[string]record),
-		counters: make(map[string]*counter),
-		ttl:      ttl,
-		stop:     make(chan struct{}),
-		done:     make(chan struct{}),
+		items: make(map[string]record),
+		hits:  make(map[string][]time.Time),
+		ttl:   ttl,
+		stop:  make(chan struct{}),
+		done:  make(chan struct{}),
 	}
 	go m.janitor()
 	return m
@@ -78,50 +82,72 @@ func (m *Memory) evict() {
 			delete(m.items, id)
 		}
 	}
-	for ip, c := range m.counters {
-		if now.Sub(c.start) > time.Hour {
-			delete(m.counters, ip)
+	for ip, hits := range m.hits {
+		if len(hits) == 0 || now.Sub(hits[len(hits)-1]) > time.Hour {
+			delete(m.hits, ip)
 		}
 	}
 }
 
-func (m *Memory) Put(ch *challenge.Challenge, issuedAt time.Time) {
+// Put stores a challenge for ttl. The in-memory backend cannot fail; the
+// error exists for the shared contract.
+func (m *Memory) Put(ch *challenge.Challenge, issuedAt time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.items[ch.ID] = record{ch: ch, issuedAt: issuedAt}
+	return nil
 }
 
-func (m *Memory) Get(id string) (*challenge.Challenge, time.Time, bool) {
+func (m *Memory) Get(id string) (*challenge.Challenge, time.Time, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	r, ok := m.items[id]
-	return r.ch, r.issuedAt, ok
+	if !ok {
+		return nil, time.Time{}, false, nil
+	}
+	// Read-time expiry, matching the Redis backend's SET EX semantics: an
+	// expired challenge is unredeemable, janitor or not.
+	if time.Since(r.issuedAt) > m.ttl {
+		delete(m.items, id)
+		return nil, time.Time{}, false, nil
+	}
+	return r.ch, r.issuedAt, true, nil
 }
 
 // Take atomically consumes a challenge: a redeemed id can never be redeemed
 // again, which is what makes replay useless.
-func (m *Memory) Take(id string) (*challenge.Challenge, time.Time, bool) {
+func (m *Memory) Take(id string) (*challenge.Challenge, time.Time, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	r, ok := m.items[id]
-	if ok {
-		delete(m.items, id)
+	if !ok {
+		return nil, time.Time{}, false, nil
 	}
-	return r.ch, r.issuedAt, ok
+	if time.Since(r.issuedAt) > m.ttl {
+		delete(m.items, id)
+		return nil, time.Time{}, false, nil
+	}
+	delete(m.items, id)
+	return r.ch, r.issuedAt, true, nil
 }
 
-// IncrIP counts a request inside a fixed window starting at the first hit.
-func (m *Memory) IncrIP(ip string, window time.Duration) int64 {
+// IncrIP records a hit and returns the sliding-window count including it
+// (ADR-0009): hits older than window no longer count, so a client timed to
+// a boundary cannot double its burst.
+func (m *Memory) IncrIP(ip string, window time.Duration) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := time.Now()
-	c, ok := m.counters[ip]
-	if !ok || now.Sub(c.start) > window {
-		m.counters[ip] = &counter{n: 1, start: now}
-		return 1
+	old := m.hits[ip]
+	kept := old[:0]
+	for _, t := range old {
+		if now.Sub(t) < window {
+			kept = append(kept, t)
+		}
 	}
-	c.n++
-	return c.n
+	kept = append(kept, now)
+	m.hits[ip] = kept
+	return int64(len(kept)), nil
 }
 
 func (m *Memory) Close() {

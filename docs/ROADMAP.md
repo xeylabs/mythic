@@ -13,7 +13,8 @@ Status markers: ✅ shipped · 🚧 in progress · 📋 planned.
 
 ## M1 — Hardening the foundation
 
-- 📋 Redis store (single-use challenges, sliding-window IP counters) for multi-node
+- ✅ Redis store (single-use challenges via `GETDEL`, sliding-window IP
+  counters) for multi-node ([ADR-0009](adr/0009-redis-store-sliding-window.md))
 - ✅ Multi-key JWKS and zero-downtime key rotation ([ADR-0006](adr/0006-multi-key-jwks-rotation.md))
 - 📋 Network fingerprints: JA4+/HTTP2 fingerprinting, ASN class scoring
   (datacenter vs residential), optional IP reputation feed

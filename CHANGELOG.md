@@ -8,6 +8,14 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `server`: **Redis store backend for multi-node deployments**
+  ([ADR-0009](docs/adr/0009-redis-store-sliding-window.md)) — single-use
+  challenges via `GETDEL`, sliding-window pressure counters via a pruned
+  sorted set, selected with `MYTHIC_STORE=redis` (+ `MYTHIC_REDIS_ADDR`).
+  Unreachable Redis refuses startup, and a runtime outage fails requests
+  closed. Both backends share one contract suite (miniredis in CI); the
+  in-memory store gained the same sliding-window semantics and read-time
+  expiry, closing the fixed-window boundary-burst gap.
 - `server`: **multi-key JWKS and in-process key rotation**
   ([ADR-0006](docs/adr/0006-multi-key-jwks-rotation.md)) — mythicd keeps a
   key ring with one active signer; when the active key passes

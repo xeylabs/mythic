@@ -42,8 +42,26 @@ func main() {
 		log.Warn("no MYTHIC_SITES configured: any site key is accepted (dev mode)")
 	}
 
-	st := store.NewMemory(cfg.ChallengeTTL)
-	defer st.Close()
+	var st store.Store
+	switch cfg.Store {
+	case "redis":
+		// Multi-node (ADR-0009): the store is the shared state. Fail closed
+		// at startup — a verifier that cannot reach its store must not mint
+		// tokens from uncounted requests.
+		rs, err := store.NewRedis(cfg.RedisAddr, "", cfg.RedisDB, cfg.ChallengeTTL)
+		if err != nil {
+			log.Error("redis store unavailable; refusing to start", "err", err)
+			os.Exit(1)
+		}
+		defer rs.Close()
+		st = rs
+		log.Info("store: redis", "addr", cfg.RedisAddr, "db", cfg.RedisDB)
+	default:
+		m := store.NewMemory(cfg.ChallengeTTL)
+		defer m.Close()
+		st = m
+		log.Info("store: memory (single node — set MYTHIC_STORE=redis for multi-node)")
+	}
 
 	srv := api.New(api.Config{
 		Sites:        cfg.Sites,

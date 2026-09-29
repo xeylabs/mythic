@@ -40,7 +40,7 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 |---|---|---|
 | Plain HTTP bot, no PoW | Cannot obtain a token: PoW required, single-use | — |
 | PoW solved by script | Difficulty adapts with risk score; per-IP pressure cap | Behavioral layer (M2) raises cost further |
-| Replay a challenge/nonce | Atomic single-use `Take` from the store; TTL expiry | Redis store (M1) for multi-node |
+| Replay a challenge/nonce | Atomic single-use `Take` from the store; TTL expiry | Redis backend available for multi-node ([ADR-0009](adr/0009-redis-store-sliding-window.md)) |
 | Forged/altered token | Ed25519 signature over payload; origin verifies locally | — |
 | Token theft (reuse) | Short TTL (≤ challenge TTL, enforced; default 3 min); jti (revocation-ready) | Binding tokens to session/origin (M3) |
 | Solve-time shortcut (native/GPU solver) | Quantile-calibrated solve-time floor ([ADR-0008](adr/0008-quantile-solve-time-floor.md)): GPU-class answers (~100× a worker) trip it ~96%; near-worker native rates partly escape | The floor is wall-clock — a client that *delays* verify defeats it by design; behavioral layer (M2) closes this |
@@ -61,7 +61,10 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 
 ## Honest limitations of v0
 
-- In-memory store binds mythicd to one node; restarts orphan issued challenges.
+- The default in-memory store binds mythicd to one node — set
+  `MYTHIC_STORE=redis` for multi-node (fail-closed on outage, ADR-0009).
+  The Ed25519 keystore stays per-node (ADR-0006); signing keys are not
+  shared through Redis.
 - Server-observed signals are thin: quantile-calibrated solve-time plausibility
   ([ADR-0008](adr/0008-quantile-solve-time-floor.md)) and per-identity pressure.
   The floor catches hardware that answers faster than any honest worker — it
@@ -70,11 +73,9 @@ who attacks, what they want, what stops them, and what honestly doesn't.
   until they ship, a stealth browser with a patient native solver beats v0.
 - Client hints are trivially forgeable. That is *by design* — they exist to
   cheaply classify the honest majority of casual bots, never to decide alone.
-- Failure mode is configurable per deployment: the store lives inside the
-  process, so an mythicd outage fails closed for protected flows.
-- The per-identity window is fixed, not sliding: a client synchronized to the
-  window boundary doubles its burst. Sliding-window counters arrive with the
-  Redis store (M1).
+- Failure mode is configurable per deployment: with the in-memory store an
+  mythicd outage fails closed for protected flows; with the Redis store the
+  same applies to a Redis outage (fail closed by choice, ADR-0009).
 - The difficulty ceiling assumes desktop-class workers (~400k H/s measured);
   low-power mobile devices need headroom at high risk scores — calibrate
   against real device data when M2 lands.

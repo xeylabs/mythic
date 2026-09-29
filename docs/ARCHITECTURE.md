@@ -30,7 +30,7 @@ flowchart LR
 | Risk engine | `server/internal/risk` | Deterministic weighted scoring → score 0–100 → decision + next difficulty |
 | Challenge issuer | `server/internal/challenge` | Hashcash-style SHA-256 challenges; solution validation; plausibility floors |
 | Key management | `server/internal/crypto` | Ed25519 generation/persistence, token signing |
-| Store | `server/internal/store` | Single-use challenge registry + per-IP counters (in-memory v0, Redis planned) |
+| Store | `server/internal/store` | Single-use challenge registry + sliding-window IP counters — in-memory (default) or Redis (`MYTHIC_STORE=redis`, [ADR-0009](adr/0009-redis-store-sliding-window.md)) |
 | Origin verification | `server/xtoken` | Public package: parse/verify decision tokens with no dependency on the server runtime |
 
 ## Request lifecycle
@@ -88,10 +88,10 @@ hints carry bounded weight (ADR-0004).
 
 ## Scaling path (planned, not built)
 
-| Concern | v0 | Planned |
+| Concern | v0 | Shipped |
 |---|---|---|
-| Store | in-process memory | Redis (single-use `SET NX EX`, sliding-window counters) |
-| Keys | multi-key ring, time-based rotation | multi-node via shared store; HSM (M5) |
+| Store | in-process memory | Redis backend (`GETDEL` single-use, ZSET sliding window) or memory for single node |
+| Keys | single active | multi-key ring, time-based rotation |
 | Signals | server-observed + advisory hints | behavioral biometrics, TLS/JA4+ fingerprint, IP reputation |
 | Scoring | deterministic rules | rules + learned model with feedback loop |
 | Deployment | single binary | horizontally scaled behind proxy; store is the shared state |

@@ -27,6 +27,9 @@ type Config struct {
 	IPWindow     time.Duration // per-IP request-pressure window
 	IPLimit      int64         // max requests per IP inside IPWindow
 	TrustProxy   bool          // honor X-Forwarded-For; enable ONLY behind a proxy that overwrites it
+	Store        string        // "memory" (default) or "redis" (multi-node, ADR-0009)
+	RedisAddr    string        // Redis address for MYTHIC_STORE=redis
+	RedisDB      int           // Redis logical DB (default 0)
 	KeyMaxAge    time.Duration // active-key lifetime; 0 disables auto-rotation (ADR-0006)
 	KeyRetention time.Duration // how long retired keys stay in the JWKS after rotation
 	Risk         risk.Config   // risk-engine tuning: thresholds are deployment-side security margin
@@ -44,6 +47,9 @@ func FromEnv() (Config, error) {
 		IPWindow:     envDur("MYTHIC_IP_WINDOW", time.Minute),
 		IPLimit:      envInt64("MYTHIC_IP_LIMIT", 120),
 		TrustProxy:   envBool("MYTHIC_TRUST_PROXY"),
+		Store:        env("MYTHIC_STORE", "memory"),
+		RedisAddr:    env("MYTHIC_REDIS_ADDR", "127.0.0.1:6379"),
+		RedisDB:      int(envInt64("MYTHIC_REDIS_DB", 0)),
 		KeyMaxAge:    envDur("MYTHIC_KEY_MAX_AGE", 720*time.Hour),
 		KeyRetention: envDur("MYTHIC_KEY_RETENTION", crypto.DefaultKeyRetention),
 		Risk:         riskConfig(),
@@ -86,6 +92,14 @@ func (c Config) validate() error {
 	}
 	if c.KeyMaxAge < 0 || c.KeyRetention < 0 {
 		return fmt.Errorf("key max-age and retention must be non-negative, got %v/%v", c.KeyMaxAge, c.KeyRetention)
+	}
+	switch c.Store {
+	case "", "memory", "redis":
+	default:
+		return fmt.Errorf("MYTHIC_STORE must be \"memory\" or \"redis\", got %q", c.Store)
+	}
+	if c.RedisAddr == "" {
+		return fmt.Errorf("MYTHIC_REDIS_ADDR must not be empty")
 	}
 	return nil
 }
