@@ -11,6 +11,8 @@ package api_test
 import (
 	"encoding/base64"
 	"encoding/json"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -75,4 +77,63 @@ func TestTokenTTLCannotExceedChallengeTTL(t *testing.T) {
 	if ttl := claims.Exp - claims.IssuedAt; ttl > 30 {
 		t.Fatalf("token TTL %ds exceeds the 30s challenge TTL — the ADR-0002 clamp failed", ttl)
 	}
+}
+
+// Red-team G1: the 4xx paths (invalid JSON, unknown site key) used to bypass
+// the limiter entirely — 600 hostile rounds at 225 req/s, zero 429s. Budget
+// is now consumed before validation: garbage drains the caller's own budget.
+func TestGarbageConsumesRateLimitBudget(t *testing.T) {
+	ts := newLimitTestServer(t, 10)
+	for i := 0; i < 10; i++ {
+		if code := postRaw(t, ts.URL+"/v1/challenge", `{garbage`); code != 400 {
+			t.Fatalf("invalid JSON must be 400, got %d", code)
+		}
+	}
+	if code := postRaw(t, ts.URL+"/v1/challenge", `{"site_key":"test-site"}`); code != 429 {
+		t.Fatalf("after 10 garbage rounds the budget must be spent: got %d, want 429", code)
+	}
+}
+
+// Red-team G5: trailing bytes after a JSON value used to be silently ignored.
+func TestTrailingJSONDataRejected(t *testing.T) {
+	ts := newLimitTestServer(t, 1000)
+	if code := postRaw(t, ts.URL+"/v1/challenge", `{"site_key":"nope"}{"injected":true}`); code != 400 {
+		t.Fatalf("trailing data must be rejected, got %d", code)
+	}
+}
+
+func newLimitTestServer(t *testing.T, ipLimit int64) *httptest.Server {
+	t.Helper()
+	km, err := crypto.LoadOrCreate("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(km.Close)
+	eng := risk.New(risk.Config{
+		BaseDifficulty:  8,
+		MaxDifficulty:   12,
+		DenyAt:          85,
+		HeavyAt:         65,
+		StepUpAt:        30,
+		AdvisoryPenalty: map[string]int{},
+	})
+	srv := api.New(api.Config{
+		Sites:    []string{"test-site"},
+		TokenTTL: time.Minute, ChallengeTTL: time.Minute,
+		IPWindow: time.Minute, IPLimit: ipLimit,
+	}, km, store.NewMemory(time.Minute), eng, silentLogger())
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+func postRaw(t *testing.T, url, body string) int {
+	t.Helper()
+	resp, err := http.Post(url, "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return resp.StatusCode
 }

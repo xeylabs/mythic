@@ -6,7 +6,10 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -70,10 +73,42 @@ func New(cfg Config, km *crypto.KeyManager, st store.Store, eng *risk.Engine, lo
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
-	mux.HandleFunc("GET /v1/.well-known/jwks.json", s.handleJWKS)
-	mux.HandleFunc("POST /v1/challenge", s.handleChallenge)
-	mux.HandleFunc("POST /v1/verify", s.handleVerify)
+	// Every /v1 request counts against the caller's budget BEFORE any
+	// validation (red-team G1): otherwise invalid-JSON and unknown-site-key
+	// floods were an unthrottled CPU/log amplifier. healthz stays open for
+	// load balancers.
+	mux.Handle("GET /v1/.well-known/jwks.json", s.ipLimit(http.HandlerFunc(s.handleJWKS)))
+	mux.Handle("POST /v1/challenge", s.ipLimit(http.HandlerFunc(s.handleChallenge)))
+	mux.Handle("POST /v1/verify", s.ipLimit(http.HandlerFunc(s.handleVerify)))
 	return s.middleware(mux)
+}
+
+// attemptsCtxKey carries the caller's pressure count from the limiter into
+// the handlers without counting twice.
+type attemptsCtxKey struct{}
+
+// ipLimit counts the request against the aggregated identity budget and
+// rejects it once the limit is exceeded. The count feeds the risk engine's
+// pressure signal downstream via the request context.
+func (s *Server) ipLimit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := clientIP(r, s.cfg.TrustProxy)
+		attempts := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow)
+		if attempts > s.cfg.IPLimit {
+			w.Header().Set("Retry-After", "30")
+			writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests from this address")
+			return
+		}
+		ctx := context.WithValue(r.Context(), attemptsCtxKey{}, attempts)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func attemptsFrom(r *http.Request) int64 {
+	if v, ok := r.Context().Value(attemptsCtxKey{}).(int64); ok {
+		return v
+	}
+	return 1 // direct handler invocation (tests); no pressure signal
 }
 
 // --- handlers -------------------------------------------------------------
@@ -111,12 +146,7 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip := clientIP(r, s.cfg.TrustProxy)
-	attempts := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow)
-	if attempts > s.cfg.IPLimit {
-		w.Header().Set("Retry-After", "30")
-		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests from this address")
-		return
-	}
+	attempts := attemptsFrom(r)
 
 	res := s.eng.Evaluate(risk.Input{
 		IP:            limiterKey(ip),
@@ -162,7 +192,7 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip := clientIP(r, s.cfg.TrustProxy)
-	attempts := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow)
+	attempts := attemptsFrom(r)
 
 	// Single-use consumption happens before validation: a replayed or expired
 	// id burns itself either way.
@@ -225,6 +255,11 @@ func decodeJSON(r *http.Request, dst any) error {
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(dst); err != nil {
 		return err
+	}
+	// Strict parsing: trailing bytes after the first JSON value are rejected,
+	// not silently ignored (red-team G5).
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+		return errors.New("unexpected trailing data after JSON value")
 	}
 	return nil
 }

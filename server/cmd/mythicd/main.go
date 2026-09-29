@@ -23,7 +23,13 @@ import (
 )
 
 func main() {
-	cfg := config.FromEnv()
+	cfg, err := config.FromEnv()
+	if err != nil {
+		// Configuration is security margin: refuse to serve on nonsense
+		// rather than silently weakening the deployment (red-team G4).
+		slog.New(slog.NewJSONHandler(os.Stdout, nil)).Error("invalid configuration; refusing to start", "err", err)
+		os.Exit(1)
+	}
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
 
 	km, err := crypto.LoadOrCreateWithPolicy(cfg.KeyFile, cfg.KeyMaxAge, cfg.KeyRetention, log)
@@ -53,6 +59,12 @@ func main() {
 		Addr:              cfg.Addr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
+		// Body/read/write/idle timeouts: without them a slow-reading client
+		// holds its connection (and goroutine) indefinitely — the red-team
+		// G2 slow-body hold.
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

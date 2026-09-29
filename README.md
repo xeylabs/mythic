@@ -115,7 +115,9 @@ claims, err := xtoken.VerifyToken(publicKey, token) // local, no network call
 Everything is environment-driven — including the risk-engine tuning, which is
 deliberately deployment-side: defaults are public code, but your operating
 margins are yours (see [ADR-0003](docs/adr/0003-sha256-adaptive-pow.md) and
-[ADR-0005](docs/adr/0005-explicit-proxy-trust.md)).
+[ADR-0005](docs/adr/0005-explicit-proxy-trust.md)). Out-of-range settings
+(negative difficulty, inverted thresholds, non-positive limits) **refuse to
+start** rather than silently weakening the deployment.
 
 | Variable | Default | Purpose |
 |---|---|---|

@@ -44,6 +44,7 @@ type KeyManager struct {
 	maxAge    time.Duration // rotate when the active key is older; 0 = no auto-rotation
 	retention time.Duration // how long a retired key remains in the JWKS
 	log       *slog.Logger  // nil-safe: rotation failures surface in the server log
+	loadMtime time.Time     // keystore mtime at load — a changed mtime means another process wrote it
 	stop      chan struct{}
 	done      chan struct{}
 }
@@ -83,6 +84,14 @@ func LoadOrCreateWithPolicy(path string, maxAge, retention time.Duration, log *s
 			return nil, err
 		}
 		km.keys = keys
+	}
+	// Remember the on-disk state we loaded: a rotation must never silently
+	// clobber a keystore another process has written since (red-team G3 —
+	// two nodes on one file split-brained their signing keys).
+	if path != "" {
+		if info, err := os.Stat(path); err == nil {
+			km.loadMtime = info.ModTime()
+		}
 	}
 
 	// An over-age ring rotates before serving, so the advertised active key
@@ -307,12 +316,24 @@ func loadKeystore(path string) ([]*managedKey, error) {
 }
 
 // saveLocked persists the ring via temp-file + rename so a crash mid-write
-// cannot corrupt the keystore.
+// cannot corrupt the keystore. The write is refused when the file changed on
+// disk since we loaded it: MYTHIC_KEY_FILE is per-node, and two processes
+// sharing it otherwise overwrite each other's rings — whoever saves last
+// silently erases the other's keys (red-team G3).
 func (k *KeyManager) saveLocked() error {
 	if k.path == "" {
 		return nil
 	}
-	return saveKeystore(k.path, k.keys)
+	if info, err := os.Stat(k.path); err == nil && !k.loadMtime.IsZero() && !info.ModTime().Equal(k.loadMtime) {
+		return fmt.Errorf("crypto: keystore %s changed on disk since load; refusing to overwrite (is another process sharing this file?)", k.path)
+	}
+	if err := saveKeystore(k.path, k.keys); err != nil {
+		return err
+	}
+	if info, err := os.Stat(k.path); err == nil {
+		k.loadMtime = info.ModTime()
+	}
+	return nil
 }
 
 func saveKeystore(path string, keys []*managedKey) error {
@@ -331,7 +352,9 @@ func saveKeystore(path string, keys []*managedKey) error {
 	if err != nil {
 		return fmt.Errorf("crypto: marshal keystore: %w", err)
 	}
-	tmp := path + ".tmp"
+	// The temp name is process-unique: two processes saving the same keystore
+	// must not collide on one .tmp file (red-team G3 startup failure).
+	tmp := fmt.Sprintf("%s.%d.tmp", path, os.Getpid())
 	if err := os.WriteFile(tmp, blob, 0o600); err != nil {
 		return fmt.Errorf("crypto: persist keystore: %w", err)
 	}

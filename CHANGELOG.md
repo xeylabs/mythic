@@ -43,6 +43,25 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- `server`: **every `/v1` request consumes the caller's rate-limit budget
+  before validation** (red-team G2 session, 2026-09-29). Invalid-JSON and
+  unknown-site-key floods previously bypassed the limiter entirely — 600
+  hostile rounds at 225 req/s, zero 429s. `healthz` stays uncounted for
+  load balancers.
+- `server`: **response/body timeouts** — `ReadTimeout`/`WriteTimeout`/
+  `IdleTimeout` set on the HTTP server; a slow-reading client no longer
+  holds its connection and goroutine indefinitely (slow-body hold, PoC'd).
+- `server`: **configuration is validated at startup and nonsense refuses to
+  serve** — a negative `MYTHIC_BASE_DIFFICULTY` used to issue challenges any
+  nonce satisfied (zero-work tokens). Difficulty range, threshold ordering,
+  and positivity of limits/TTLs are now enforced.
+- `server/internal/api`: **trailing bytes after a JSON value are rejected**
+  instead of silently ignored.
+- `server/internal/crypto`: **keystore writes refuse to clobber on-disk
+  changes** made since load, and temp files are process-unique — two
+  processes sharing `MYTHIC_KEY_FILE` previously collided on one `.tmp`
+  name (startup failure) or silently split-brained their signing keys
+  (each advertised a key the other never listed).
 - `server`: **per-identity rate limiting aggregates IPv6 to /64**
   ([ADR-0007](docs/adr/0007-ipv6-slash64-pressure-key.md)). A red-team
   session showed the /128-keyed limiter let a single IPv6 /64 mint 2⁶⁴

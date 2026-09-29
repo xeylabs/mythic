@@ -338,3 +338,54 @@ func TestLoadRejectsCorruptKeystore(t *testing.T) {
 		t.Fatal("keystore whose first key is retired must be rejected")
 	}
 }
+
+// Red-team G3: a rotation must refuse to overwrite a keystore that another
+// process has written since we loaded it — silent clobbering is what let two
+// nodes split-brain their signing keys.
+func TestSaveRefusedWhenKeystoreChangedOnDisk(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mythic.keys")
+
+	km, err := crypto.LoadOrCreate(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(km.Close)
+
+	// Another process writes its own ring behind our back.
+	other := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize)) // all-zero seed, deterministic
+	doc := map[string]any{
+		"version": 1,
+		"keys": []map[string]any{{
+			"seed":       base64.RawURLEncoding.EncodeToString(other.Seed()),
+			"created_at": time.Now().Unix(),
+		}},
+	}
+	blob, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, blob, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := km.Rotate(); err == nil {
+		t.Fatal("rotation must refuse to clobber a keystore changed since load")
+	}
+
+	// The foreign ring survives untouched on disk, and the in-memory ring
+	// keeps signing (degraded, loud — not silently divergent).
+	again, err := crypto.LoadOrCreate(path)
+	if err != nil {
+		t.Fatalf("foreign ring must remain loadable: %v", err)
+	}
+	t.Cleanup(again.Close)
+	foreign := other.Public().(ed25519.PublicKey)
+	if !bytes.Equal(again.PublicKey(), foreign) {
+		t.Fatal("the other process's ring must not be erased from disk")
+	}
+	token, _, _ := signProbe(t, km)
+	if _, err := xtoken.VerifyToken(km.PublicKey(), token); err != nil {
+		t.Fatalf("refused rotation must leave in-memory signing intact: %v", err)
+	}
+}

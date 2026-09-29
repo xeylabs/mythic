@@ -5,6 +5,7 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -32,7 +33,7 @@ type Config struct {
 	LogLevel     slog.Level
 }
 
-func FromEnv() Config {
+func FromEnv() (Config, error) {
 	c := Config{
 		Addr:         env("MYTHIC_ADDR", ":8080"),
 		KeyFile:      env("MYTHIC_KEY_FILE", ""),
@@ -51,7 +52,42 @@ func FromEnv() Config {
 	if env("MYTHIC_LOG_LEVEL", "") == "debug" {
 		c.LogLevel = slog.LevelDebug
 	}
-	return c
+	if err := c.validate(); err != nil {
+		return Config{}, err
+	}
+	return c, nil
+}
+
+// validate refuses to serve on settings that silently gut the security
+// model. Red-team G4 (2026-09-29): a negative MYTHIC_BASE_DIFFICULTY flowed
+// straight into issued challenges and any nonce met the difficulty —
+// zero-work tokens from an operator foot-gun.
+func (c Config) validate() error {
+	if c.Risk.BaseDifficulty < 8 || c.Risk.BaseDifficulty > 30 {
+		return fmt.Errorf("MYTHIC_BASE_DIFFICULTY must be within [8,30], got %d", c.Risk.BaseDifficulty)
+	}
+	if c.Risk.MaxDifficulty < c.Risk.BaseDifficulty || c.Risk.MaxDifficulty > 30 {
+		return fmt.Errorf("MYTHIC_MAX_DIFFICULTY must be within [BASE_DIFFICULTY,30], got %d (base %d)", c.Risk.MaxDifficulty, c.Risk.BaseDifficulty)
+	}
+	if c.Risk.StepUpAt < 0 || c.Risk.HeavyAt < c.Risk.StepUpAt || c.Risk.DenyAt < c.Risk.HeavyAt || c.Risk.DenyAt > 100 {
+		return fmt.Errorf("risk thresholds must satisfy 0 ≤ STEP_UP_AT ≤ HEAVY_AT ≤ DENY_AT ≤ 100, got %d/%d/%d",
+			c.Risk.StepUpAt, c.Risk.HeavyAt, c.Risk.DenyAt)
+	}
+	if c.Risk.FastSolvePenalty < 0 || c.Risk.PressurePerReq < 0 || c.Risk.PressureMax < 0 {
+		return fmt.Errorf("risk penalties must be non-negative, got fast=%d per_req=%d max=%d",
+			c.Risk.FastSolvePenalty, c.Risk.PressurePerReq, c.Risk.PressureMax)
+	}
+	if c.IPLimit < 1 {
+		return fmt.Errorf("MYTHIC_IP_LIMIT must be ≥ 1, got %d", c.IPLimit)
+	}
+	if c.IPWindow <= 0 || c.ChallengeTTL <= 0 || c.TokenTTL <= 0 {
+		return fmt.Errorf("IP window, challenge TTL and token TTL must be positive, got %v/%v/%v",
+			c.IPWindow, c.ChallengeTTL, c.TokenTTL)
+	}
+	if c.KeyMaxAge < 0 || c.KeyRetention < 0 {
+		return fmt.Errorf("key max-age and retention must be non-negative, got %v/%v", c.KeyMaxAge, c.KeyRetention)
+	}
+	return nil
 }
 
 func env(key, def string) string {

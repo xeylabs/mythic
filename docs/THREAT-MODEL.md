@@ -72,6 +72,12 @@ who attacks, what they want, what stops them, and what honestly doesn't.
   cheaply classify the honest majority of casual bots, never to decide alone.
 - Failure mode is configurable per deployment: the store lives inside the
   process, so an mythicd outage fails closed for protected flows.
+- The per-identity window is fixed, not sliding: a client synchronized to the
+  window boundary doubles its burst. Sliding-window counters arrive with the
+  Redis store (M1).
+- The difficulty ceiling assumes desktop-class workers (~400k H/s measured);
+  low-power mobile devices need headroom at high risk scores — calibrate
+  against real device data when M2 lands.
 
 ## Review triggers
 

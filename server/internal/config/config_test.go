@@ -11,7 +11,10 @@ import (
 )
 
 func TestFromEnvDefaults(t *testing.T) {
-	cfg := FromEnv()
+	cfg, err := FromEnv()
+	if err != nil {
+		t.Fatalf("defaults must be valid: %v", err)
+	}
 	if cfg.Addr != ":8080" {
 		t.Fatalf("default addr: %q", cfg.Addr)
 	}
@@ -44,7 +47,10 @@ func TestFromEnvOverrides(t *testing.T) {
 	t.Setenv("MYTHIC_KEY_MAX_AGE", "0")
 	t.Setenv("MYTHIC_KEY_RETENTION", "2h")
 
-	cfg := FromEnv()
+	cfg, err := FromEnv()
+	if err != nil {
+		t.Fatalf("overrides must be valid: %v", err)
+	}
 	if cfg.Addr != ":9090" {
 		t.Fatalf("addr override: %q", cfg.Addr)
 	}
@@ -65,5 +71,32 @@ func TestFromEnvOverrides(t *testing.T) {
 	}
 	if cfg.KeyRetention != 2*time.Hour {
 		t.Fatalf("key retention override: %v", cfg.KeyRetention)
+	}
+}
+
+// Red-team G4: settings that silently gut the security model must be
+// rejected at startup, not applied.
+func TestFromEnvRejectsUnsafeSettings(t *testing.T) {
+	cases := []struct {
+		name string
+		env  map[string]string
+	}{
+		{"negative difficulty zeroes the PoW", map[string]string{"MYTHIC_BASE_DIFFICULTY": "-1"}},
+		{"difficulty above the SDK's reach", map[string]string{"MYTHIC_BASE_DIFFICULTY": "40"}},
+		{"max below base", map[string]string{"MYTHIC_BASE_DIFFICULTY": "20", "MYTHIC_MAX_DIFFICULTY": "10"}},
+		{"inverted thresholds", map[string]string{"MYTHIC_DENY_AT": "10", "MYTHIC_HEAVY_AT": "50", "MYTHIC_STEP_UP_AT": "90"}},
+		{"negative ip limit", map[string]string{"MYTHIC_IP_LIMIT": "-1"}},
+		{"zero challenge ttl", map[string]string{"MYTHIC_CHALLENGE_TTL": "0s"}},
+		{"negative penalty", map[string]string{"MYTHIC_FAST_SOLVE_PENALTY": "-5"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			for k, v := range c.env {
+				t.Setenv(k, v)
+			}
+			if _, err := FromEnv(); err == nil {
+				t.Fatalf("%s must be rejected", c.name)
+			}
+		})
 	}
 }
