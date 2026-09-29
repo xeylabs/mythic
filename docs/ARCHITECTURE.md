@@ -26,7 +26,7 @@ flowchart LR
 
 | Component | Package | Responsibility |
 |---|---|---|
-| HTTP API | `server/internal/api` | Challenge/verify endpoints, middleware (request id, logging, recovery, CORS, per-IP limiting) |
+| HTTP API | `server/internal/api` | Challenge/verify endpoints, middleware (request id, logging, recovery, CORS, per-identity limiting with IPv6 aggregated to /64) |
 | Risk engine | `server/internal/risk` | Deterministic weighted scoring → score 0–100 → decision + next difficulty |
 | Challenge issuer | `server/internal/challenge` | Hashcash-style SHA-256 challenges; solution validation; plausibility floors |
 | Key management | `server/internal/crypto` | Ed25519 generation/persistence, token signing |
@@ -46,7 +46,8 @@ flowchart LR
    the farm pays, scaled across every request).
 3. **`POST /v1/verify`** — the challenge is consumed **atomically and
    single-use**; the solution is checked; the *server-measured* solve time is
-   compared against the plausibility floor for the difficulty. The engine
+   compared against the quantile-calibrated plausibility floor
+   ([ADR-0008](adr/0008-quantile-solve-time-floor.md)). The engine
    rescored the request; allow/challenge traffic gets an Ed25519-signed
    decision token, deny traffic gets `403`.
 4. **Origin verification** — the protected backend verifies the token against
@@ -57,7 +58,8 @@ flowchart LR
 
 - **Tokens**: `base64url(json(payload)) + "." + base64url(ed25519_sig)`.
   Claims: version, site key, decision, risk score, key id, jti, iat, exp
-  (default TTL 5 min — configured, never longer than the challenge TTL).
+  (enforced ≤ the challenge TTL — api.New clamps with a warning, per the
+  ADR-0002 contract).
 - **Key rotation**: keys carry a `kid` (SHA-256 of the public key, truncated)
   and live in a ring with exactly one active signer
   ([ADR-0006](docs/adr/0006-multi-key-jwks-rotation.md)). The JWKS endpoint

@@ -31,8 +31,9 @@ func TestCleanRequestIsAllowed(t *testing.T) {
 }
 
 func TestImplausibleSolveTimeIsPenalized(t *testing.T) {
-	// Difficulty 18 floor ≈ 5242ms; claiming a 5ms round trip is impossible.
-	res := engine().Evaluate(risk.Input{IP: "1.2.3.4", Attempts: 1, SolveMillis: 5, Difficulty: 18})
+	// ADR-0008: difficulty-18 floor ≈ 4ms (quantile-calibrated). A 1ms round
+	// trip is below what any honest worker can do; GPU-class answers trip it.
+	res := engine().Evaluate(risk.Input{IP: "1.2.3.4", Attempts: 1, SolveMillis: 1, Difficulty: 18})
 	if !hasReason(res.Reasons, "solve_time_implausible") {
 		t.Fatalf("expected solve_time_implausible, got %v", res.Reasons)
 	}
@@ -48,9 +49,21 @@ func TestImplausibleSolveTimeIsPenalized(t *testing.T) {
 }
 
 func TestPlausibleSolveTimeNotPenalized(t *testing.T) {
+	// The honest-worker calibration: 10s at difficulty 18 is comfortably
+	// above the quantile floor — no penalty, no false positive.
 	res := engine().Evaluate(risk.Input{IP: "1.2.3.4", Attempts: 1, SolveMillis: 10_000, Difficulty: 18})
 	if res.Score != 0 {
 		t.Fatalf("plausible solve time scored: %v", res.Reasons)
+	}
+}
+
+func TestFastButHonestWorkerNotPenalized(t *testing.T) {
+	// Regression for red-team finding F1: a strong worker finishing 2^18 in
+	// ~655ms (measured ~400k H/s) used to be flagged by the 5.2s floor. The
+	// quantile floor (4ms) must let it through.
+	res := engine().Evaluate(risk.Input{IP: "1.2.3.4", Attempts: 1, SolveMillis: 655, Difficulty: 18})
+	if res.Score != 0 {
+		t.Fatalf("fast honest worker scored: %v", res.Reasons)
 	}
 }
 

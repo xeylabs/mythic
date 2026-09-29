@@ -71,10 +71,13 @@ func TestSolveProducesValidNonce(t *testing.T) {
 }
 
 func TestMinPlausibleSolveMillis(t *testing.T) {
+	// ADR-0008: floor = 2^d / (2M × 32). Low difficulties truncate to zero —
+	// where PoW is not real work, the floor has nothing to say.
 	cases := map[int]int64{
 		0:  0,
-		12: 81,   // 4096 * 1000 / 50000
-		18: 5242, // 262144 * 1000 / 50000
+		12: 0,    // 4096 * 1000 / 64_000_000 → 0
+		18: 4,    // 262144 * 1000 / 64_000_000
+		26: 1048, // 67108864 * 1000 / 64_000_000
 	}
 	for d, want := range cases {
 		if got := challenge.MinPlausibleSolveMillis(d); got != want {

@@ -42,13 +42,13 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 | PoW solved by script | Difficulty adapts with risk score; per-IP pressure cap | Behavioral layer (M2) raises cost further |
 | Replay a challenge/nonce | Atomic single-use `Take` from the store; TTL expiry | Redis store (M1) for multi-node |
 | Forged/altered token | Ed25519 signature over payload; origin verifies locally | — |
-| Token theft (reuse) | Short TTL (default 5 min); jti (revocation-ready) | Binding tokens to session/origin (M3) |
-| Solve-time shortcut (native/GPU solver) | Server-measured plausibility floor per difficulty | Floor is an upper bound on *humanly plausible*, not on hardware — behavioral biometrics closes this (M2) |
-| Distributed attack (fresh IPs per request) | Per-IP counters only — weak by design in v0 | Honest gap: needs IP reputation, JA4+ TLS fingerprint, ASN scoring (M1/M3) |
-| Solve-farm relay (human solves in browser farm) | Server-side solve-time floor vs. round-trip latency | Behavioral biometrics (M2); cryptographic step-up for high-value actions (M4) |
+| Token theft (reuse) | Short TTL (≤ challenge TTL, enforced; default 3 min); jti (revocation-ready) | Binding tokens to session/origin (M3) |
+| Solve-time shortcut (native/GPU solver) | Quantile-calibrated solve-time floor ([ADR-0008](adr/0008-quantile-solve-time-floor.md)): GPU-class answers (~100× a worker) trip it ~96%; near-worker native rates partly escape | The floor is wall-clock — a client that *delays* verify defeats it by design; behavioral layer (M2) closes this |
+| Distributed attack (fresh IPs per request) | Per-identity counters — IPv6 aggregated to /64 ([ADR-0007](adr/0007-ipv6-slash64-pressure-key.md)), so one line is one identity; IPv4 stays /32 | Honest gap: a /48 still yields 65k identities; needs IP reputation, JA4+ TLS fingerprint, ASN scoring (M1/M3) |
+| Solve-farm relay (human solves in browser farm) | Solve-time floor adds nothing against a patient relay — it can simply wait | Behavioral biometrics (M2); cryptographic step-up for high-value actions (M4) |
 | Client-hint forgery ("I'm human, honest") | Hints are advisory with hard weight caps; denying `webdriver:true` in a bot just forfeits a discount | — |
 | Risk-engine bypass via unknown site key | Site-key allowlist (`MYTHIC_SITES`) | — |
-| Flood mythicd itself (DoS) | Per-IP rate limit; stateless handlers | CDN in front; PoW itself is the anti-flood cost (M3: stricter floors under load) |
+| Flood mythicd itself (DoS) | Per-identity rate limit (/64-aggregated); stateless handlers | CDN in front; PoW itself is the anti-flood cost (M3: stricter floors under load) |
 | Signing-key theft | Seed `0600` on disk, git-ignored, env-configured; time-based rotation bounds any single seed's signing lifetime (multi-key JWKS, [ADR-0006](adr/0006-multi-key-jwks-rotation.md)) | Key revocation on known compromise; HSM (M5) |
 
 ## Explicit non-goals
@@ -62,9 +62,12 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 ## Honest limitations of v0
 
 - In-memory store binds mythicd to one node; restarts orphan issued challenges.
-- Server-observed signals are thin: solve-time plausibility and per-IP pressure.
-  The behavioral and network-fingerprint layers are roadmap, not reality —
-  until they ship, a stealth browser with a native solver beats v0.
+- Server-observed signals are thin: quantile-calibrated solve-time plausibility
+  ([ADR-0008](adr/0008-quantile-solve-time-floor.md)) and per-identity pressure.
+  The floor catches hardware that answers faster than any honest worker — it
+  cannot and does not catch a client that delays its verify. The behavioral
+  and network-fingerprint layers are roadmap, not reality —
+  until they ship, a stealth browser with a patient native solver beats v0.
 - Client hints are trivially forgeable. That is *by design* — they exist to
   cheaply classify the honest majority of casual bots, never to decide alone.
 - Failure mode is configurable per deployment: the store lives inside the

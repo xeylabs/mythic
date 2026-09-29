@@ -43,6 +43,27 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- `server`: **per-identity rate limiting aggregates IPv6 to /64**
+  ([ADR-0007](docs/adr/0007-ipv6-slash64-pressure-key.md)). A red-team
+  session showed the /128-keyed limiter let a single IPv6 /64 mint 2⁶⁴
+  identities — a PoC drove 5,000 requests from one /64 with zero hits on the
+  limiter. IPv4 (and IPv4-mapped) addresses stay /32; access logs keep the
+  full address.
+- `server`: **decision tokens can no longer outlive their challenge.** The
+  ADR-0002 contract ("never longer than the challenge TTL") was documented
+  but unenforced — a red-team session issued a 1-hour token from a 5-second
+  challenge. `api.New` now clamps `TokenTTL` to `ChallengeTTL` with a
+  startup warning; defaults change accordingly (token 5m → 3m).
+- `server/internal/challenge`: **solve-time floor recalibrated to a low
+  quantile of honest solve time** ([ADR-0008](docs/adr/0008-quantile-solve-time-floor.md)).
+  The old floor modeled a 50k H/s worker; real `crypto.subtle` workers
+  measure ~400k–1.5M H/s, so honest clients were mass-flagged as
+  `solve_time_implausible` (and even at the modeled rate, a mean-derived
+  floor flags 63% of honest solves on a geometric distribution). The floor
+  now models the fastest plausible worker (2M H/s) divided by 32: honest
+  false positives ≤ ~6% worst case, GPU-class answers (~100× a worker) trip
+  it ~96% of the time. Documented honestly: a wall-clock floor cannot catch
+  a client that *delays* its verify — that is M2's (behavioral layer's) job.
 - `server`: **X-Forwarded-For is ignored unless `MYTHIC_TRUST_PROXY=1`**.
   An adversarial session against a live server showed blind XFF trust let a
   rotating fake header bypass the per-IP rate limiter 20/20 and erase the

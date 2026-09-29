@@ -11,10 +11,20 @@ import (
 // Algorithm is the only PoW algorithm v0 speaks.
 const Algorithm = "sha256"
 
-// OptimisticHashRate is the client hash rate (hashes/second) used to derive
-// the plausible minimum solve time for a difficulty. It intentionally models
-// a fast browser Web Worker, not a GPU.
-const OptimisticHashRate = 50_000
+// OptimisticHashRate models the fastest plausible honest browser worker
+// (hashes/second). Red-team measurement (2026-09-29): real crypto.subtle
+// workers run ~400k–1.5M H/s, so the original 50k model flagged honest
+// clients as implausible. We model the top of the honest range, then divide.
+const OptimisticHashRate = 2_000_000
+
+// FloorSafetyDivisor moves the plausibility floor to a low quantile of
+// honest solve time (ADR-0008). Solve time is geometrically distributed, so
+// ANY floor catches some honest solves: at ÷32, even a client 2× faster than
+// the modeled worker is flagged ≤ ~6% of the time, while GPU-class clients
+// (~100× a worker — the case the floor exists for) trip it ~96% of the time.
+// What no floor can do: catch a client that solves instantly and DELAYS the
+// verify. That is M2's job (behavioral signals), never wall-clock time.
+const FloorSafetyDivisor = 32
 
 // Challenge is issued to a client and must be solved exactly once.
 type Challenge struct {
@@ -56,9 +66,12 @@ func MeetsDifficulty(sum [sha256.Size]byte, n int) bool {
 	return LeadingZeroBits(sum) >= n
 }
 
-// MinPlausibleSolveMillis estimates the fastest solve time a legitimate
-// browser worker could achieve at the given difficulty. Server-measured solve
-// times below this floor are scored as implausible by the risk engine.
+// MinPlausibleSolveMillis estimates the fastest solve time an honest browser
+// worker could realistically achieve at the given difficulty — a low
+// quantile of the honest distribution, not its mean (ADR-0008).
+// Server-measured solve times below this floor are scored as implausible by
+// the risk engine. At low difficulties the floor truncates to zero by integer
+// division: where PoW is not real work, the floor has nothing to say.
 func MinPlausibleSolveMillis(difficulty int) int64 {
 	if difficulty <= 0 {
 		return 0
@@ -67,7 +80,7 @@ func MinPlausibleSolveMillis(difficulty int) int64 {
 		difficulty = 30
 	}
 	hashes := uint64(1) << difficulty
-	return int64(hashes * 1_000 / OptimisticHashRate)
+	return int64(hashes * 1_000 / (OptimisticHashRate * FloorSafetyDivisor))
 }
 
 // Solve grinds a nonce for the challenge. It is exported for tests and

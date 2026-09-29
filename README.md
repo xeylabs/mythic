@@ -126,7 +126,7 @@ margins are yours (see [ADR-0003](docs/adr/0003-sha256-adaptive-pow.md) and
 | `MYTHIC_SITES` | any key (dev mode) | Comma-separated site-key allowlist |
 | `MYTHIC_CORS_ORIGINS` | all origins | Comma-separated origins allowed for the browser SDK |
 | `MYTHIC_CHALLENGE_TTL` | `3m` | How long a challenge stays redeemable |
-| `MYTHIC_TOKEN_TTL` | `5m` | Decision token lifetime |
+| `MYTHIC_TOKEN_TTL` | `5m` | Decision token lifetime — clamped to `MYTHIC_CHALLENGE_TTL` when larger (ADR-0002) |
 | `MYTHIC_IP_WINDOW` | `1m` | Per-IP pressure window |
 | `MYTHIC_IP_LIMIT` | `120` | Max requests per IP per window |
 | `MYTHIC_TRUST_PROXY` | `false` | Honor `X-Forwarded-For` — only behind a proxy that overwrites it |

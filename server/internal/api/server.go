@@ -56,6 +56,14 @@ func New(cfg Config, km *crypto.KeyManager, st store.Store, eng *risk.Engine, lo
 	if cfg.IPLimit == 0 {
 		cfg.IPLimit = 120
 	}
+	// ADR-0002's contract: a decision token never outlives the challenge it
+	// came from. Nothing enforced it before — a red-team session issued a
+	// 1-hour token from a 5-second challenge. Clamp, visibly.
+	if cfg.TokenTTL > cfg.ChallengeTTL {
+		log.Warn("token TTL exceeds challenge TTL; clamping to the challenge TTL (ADR-0002)",
+			"token_ttl", cfg.TokenTTL.String(), "challenge_ttl", cfg.ChallengeTTL.String())
+		cfg.TokenTTL = cfg.ChallengeTTL
+	}
 	return &Server{cfg: cfg, km: km, st: st, eng: eng, log: log}
 }
 
@@ -103,7 +111,7 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip := clientIP(r, s.cfg.TrustProxy)
-	attempts := s.st.IncrIP(ip, s.cfg.IPWindow)
+	attempts := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow)
 	if attempts > s.cfg.IPLimit {
 		w.Header().Set("Retry-After", "30")
 		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests from this address")
@@ -111,7 +119,7 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := s.eng.Evaluate(risk.Input{
-		IP:            ip,
+		IP:            limiterKey(ip),
 		SiteKey:       req.SiteKey,
 		Attempts:      attempts,
 		ClientSignals: req.Hints,
@@ -154,7 +162,7 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip := clientIP(r, s.cfg.TrustProxy)
-	attempts := s.st.IncrIP(ip, s.cfg.IPWindow)
+	attempts := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow)
 
 	// Single-use consumption happens before validation: a replayed or expired
 	// id burns itself either way.
@@ -173,7 +181,7 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := s.eng.Evaluate(risk.Input{
-		IP:            ip,
+		IP:            limiterKey(ip),
 		SiteKey:       ch.SiteKey,
 		Attempts:      attempts,
 		SolveMillis:   time.Since(issuedAt).Milliseconds(),
@@ -249,4 +257,21 @@ func clientIP(r *http.Request, trustProxy bool) string {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+// limiterKey aggregates a client address to the identity the limiter and
+// pressure counters key on (ADR-0007): IPv4 stays /32, IPv6 collapses to its
+// /64 prefix — the smallest block an ISP delegates to one line. Keyed at
+// /128, a single /64 holder controlled 2^64 limiter identities and rotated
+// past the rate limit at will (red-team finding, 2026-09-29). Access logs
+// keep the full address; only the counter key is aggregated.
+func limiterKey(host string) string {
+	ip := net.ParseIP(host)
+	if ip == nil || ip.To4() != nil {
+		return host
+	}
+	v6 := ip.To16()
+	prefix := make([]byte, 16) // net.IP renders only the 4- and 16-byte forms
+	copy(prefix, v6[:8])
+	return net.IP(prefix).String() + "/64"
 }
