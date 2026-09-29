@@ -5,6 +5,7 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/xeylabs/mythic/server/internal/risk"
 )
@@ -24,6 +25,12 @@ func TestFromEnvDefaults(t *testing.T) {
 	if cfg.Risk.BaseDifficulty != def.BaseDifficulty {
 		t.Fatalf("risk tuning must default to DefaultConfig: %d", cfg.Risk.BaseDifficulty)
 	}
+	if cfg.KeyMaxAge != 720*time.Hour {
+		t.Fatalf("key max age must default to 720h (ADR-0006), got %v", cfg.KeyMaxAge)
+	}
+	if cfg.KeyRetention != 24*time.Hour {
+		t.Fatalf("key retention must default to 24h, got %v", cfg.KeyRetention)
+	}
 }
 
 func TestFromEnvOverrides(t *testing.T) {
@@ -34,6 +41,8 @@ func TestFromEnvOverrides(t *testing.T) {
 	t.Setenv("MYTHIC_DENY_AT", "90")
 	t.Setenv("MYTHIC_SITES", " alpha, beta ,,")
 	t.Setenv("MYTHIC_IP_LIMIT", "7")
+	t.Setenv("MYTHIC_KEY_MAX_AGE", "0")
+	t.Setenv("MYTHIC_KEY_RETENTION", "2h")
 
 	cfg := FromEnv()
 	if cfg.Addr != ":9090" {
@@ -50,5 +59,11 @@ func TestFromEnvOverrides(t *testing.T) {
 	}
 	if cfg.IPLimit != 7 {
 		t.Fatalf("ip limit override: %d", cfg.IPLimit)
+	}
+	if cfg.KeyMaxAge != 0 {
+		t.Fatalf("key max age override: %v", cfg.KeyMaxAge)
+	}
+	if cfg.KeyRetention != 2*time.Hour {
+		t.Fatalf("key retention override: %v", cfg.KeyRetention)
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xeylabs/mythic/server/internal/crypto"
 	"github.com/xeylabs/mythic/server/internal/risk"
 )
 
@@ -25,6 +26,8 @@ type Config struct {
 	IPWindow     time.Duration // per-IP request-pressure window
 	IPLimit      int64         // max requests per IP inside IPWindow
 	TrustProxy   bool          // honor X-Forwarded-For; enable ONLY behind a proxy that overwrites it
+	KeyMaxAge    time.Duration // active-key lifetime; 0 disables auto-rotation (ADR-0006)
+	KeyRetention time.Duration // how long retired keys stay in the JWKS after rotation
 	Risk         risk.Config   // risk-engine tuning: thresholds are deployment-side security margin
 	LogLevel     slog.Level
 }
@@ -40,6 +43,8 @@ func FromEnv() Config {
 		IPWindow:     envDur("MYTHIC_IP_WINDOW", time.Minute),
 		IPLimit:      envInt64("MYTHIC_IP_LIMIT", 120),
 		TrustProxy:   envBool("MYTHIC_TRUST_PROXY"),
+		KeyMaxAge:    envDur("MYTHIC_KEY_MAX_AGE", 720*time.Hour),
+		KeyRetention: envDur("MYTHIC_KEY_RETENTION", crypto.DefaultKeyRetention),
 		Risk:         riskConfig(),
 		LogLevel:     slog.LevelInfo,
 	}

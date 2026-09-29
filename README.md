@@ -120,7 +120,9 @@ margins are yours (see [ADR-0003](docs/adr/0003-sha256-adaptive-pow.md) and
 | Variable | Default | Purpose |
 |---|---|---|
 | `MYTHIC_ADDR` | `:8080` | Listen address |
-| `MYTHIC_KEY_FILE` | ephemeral | Ed25519 seed path (created `0600` on first run) |
+| `MYTHIC_KEY_FILE` | ephemeral | Ed25519 keystore path (JSON, created `0600` on first run; legacy bare-seed files migrate on first save) |
+| `MYTHIC_KEY_MAX_AGE` | `720h` | Active-key lifetime before in-process rotation; `0` disables auto-rotation |
+| `MYTHIC_KEY_RETENTION` | `24h` | How long a retired key stays in the JWKS after rotation |
 | `MYTHIC_SITES` | any key (dev mode) | Comma-separated site-key allowlist |
 | `MYTHIC_CORS_ORIGINS` | all origins | Comma-separated origins allowed for the browser SDK |
 | `MYTHIC_CHALLENGE_TTL` | `3m` | How long a challenge stays redeemable |

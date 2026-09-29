@@ -14,7 +14,7 @@ Status markers: ✅ shipped · 🚧 in progress · 📋 planned.
 ## M1 — Hardening the foundation
 
 - 📋 Redis store (single-use challenges, sliding-window IP counters) for multi-node
-- 📋 Multi-key JWKS and zero-downtime key rotation
+- ✅ Multi-key JWKS and zero-downtime key rotation ([ADR-0006](adr/0006-multi-key-jwks-rotation.md))
 - 📋 Network fingerprints: JA4+/HTTP2 fingerprinting, ASN class scoring
   (datacenter vs residential), optional IP reputation feed
 - 📋 Packaged PoW Web Worker in the SDK (off-main-thread by default)

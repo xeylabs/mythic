@@ -8,6 +8,14 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `server`: **multi-key JWKS and in-process key rotation**
+  ([ADR-0006](docs/adr/0006-multi-key-jwks-rotation.md)) — mythicd keeps a
+  key ring with one active signer; when the active key passes
+  `MYTHIC_KEY_MAX_AGE` (default 720h) a successor is generated without
+  restart, the predecessor stays advertised in the JWKS until
+  `MYTHIC_KEY_RETENTION` (default 24h) expires, and the ring persists as a
+  JSON keystore (`MYTHIC_KEY_FILE`) written atomically. Legacy bare-seed
+  files keep loading and migrate on the first save.
 - `server`: risk-engine tuning (difficulty floors and decision thresholds)
   is now deployment-side configuration via `MYTHIC_*` environment
   variables — the public defaults are a starting point, each deployment's

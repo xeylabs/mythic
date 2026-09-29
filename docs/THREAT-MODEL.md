@@ -49,7 +49,7 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 | Client-hint forgery ("I'm human, honest") | Hints are advisory with hard weight caps; denying `webdriver:true` in a bot just forfeits a discount | — |
 | Risk-engine bypass via unknown site key | Site-key allowlist (`MYTHIC_SITES`) | — |
 | Flood mythicd itself (DoS) | Per-IP rate limit; stateless handlers | CDN in front; PoW itself is the anti-flood cost (M3: stricter floors under load) |
-| Signing-key theft | Seed `0600` on disk, git-ignored, env-configured | Key rotation via multi-key JWKS (M1); HSM (M5) |
+| Signing-key theft | Seed `0600` on disk, git-ignored, env-configured; time-based rotation bounds any single seed's signing lifetime (multi-key JWKS, [ADR-0006](adr/0006-multi-key-jwks-rotation.md)) | Key revocation on known compromise; HSM (M5) |
 
 ## Explicit non-goals
 
@@ -73,4 +73,5 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 ## Review triggers
 
 Revisit this document when: a new signal lands, difficulty policy changes,
-the store moves to Redis, keys gain rotation, or a bypass report arrives.
+the store moves to Redis, key revocation replaces time-based rotation as the
+recovery path, or a bypass report arrives.

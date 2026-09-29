@@ -26,11 +26,12 @@ func main() {
 	cfg := config.FromEnv()
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
 
-	km, err := crypto.LoadOrCreate(cfg.KeyFile)
+	km, err := crypto.LoadOrCreateWithPolicy(cfg.KeyFile, cfg.KeyMaxAge, cfg.KeyRetention, log)
 	if err != nil {
 		log.Error("key setup failed", "err", err)
 		os.Exit(1)
 	}
+	defer km.Close()
 	if len(cfg.Sites) == 0 {
 		log.Warn("no MYTHIC_SITES configured: any site key is accepted (dev mode)")
 	}

@@ -58,9 +58,14 @@ flowchart LR
 - **Tokens**: `base64url(json(payload)) + "." + base64url(ed25519_sig)`.
   Claims: version, site key, decision, risk score, key id, jti, iat, exp
   (default TTL 5 min — configured, never longer than the challenge TTL).
-- **Key rotation**: keys carry a `kid` (SHA-256 of the public key, truncated);
-  the JWKS endpoint advertises the active key. Multi-key JWKS is the planned
-  mechanism for zero-downtime rotation.
+- **Key rotation**: keys carry a `kid` (SHA-256 of the public key, truncated)
+  and live in a ring with exactly one active signer
+  ([ADR-0006](docs/adr/0006-multi-key-jwks-rotation.md)). The JWKS endpoint
+  advertises the active key first, then retired keys; origins select by the
+  `kid` claimed inside the token. Rotation is time-based and in-process
+  (`MYTHIC_KEY_MAX_AGE`, default 720h) — retired keys stay advertised until
+  `MYTHIC_KEY_RETENTION` (default 24h) expires, longer than any token they
+  signed could remain valid.
 - **Seeds**: the Ed25519 seed is generated at first start and written to
   `MYTHIC_KEY_FILE` with `0600`. Seeds are git-ignored (`.gitignore` blocks
   `*.seed` and `data/`).
@@ -84,7 +89,7 @@ hints carry bounded weight (ADR-0004).
 | Concern | v0 | Planned |
 |---|---|---|
 | Store | in-process memory | Redis (single-use `SET NX EX`, sliding-window counters) |
-| Keys | single active | multi-key JWKS rotation |
+| Keys | multi-key ring, time-based rotation | multi-node via shared store; HSM (M5) |
 | Signals | server-observed + advisory hints | behavioral biometrics, TLS/JA4+ fingerprint, IP reputation |
 | Scoring | deterministic rules | rules + learned model with feedback loop |
 | Deployment | single binary | horizontally scaled behind proxy; store is the shared state |

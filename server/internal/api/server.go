@@ -75,7 +75,9 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleJWKS(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"keys": []any{s.km.PublicKeyJWK()}})
+	// ADR-0006: the active key first, then retired keys — origins select the
+	// verification key by the kid claimed inside the token.
+	writeJSON(w, http.StatusOK, map[string]any{"keys": s.km.PublicJWKS()})
 }
 
 type challengeRequest struct {
