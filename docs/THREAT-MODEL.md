@@ -62,9 +62,10 @@ who attacks, what they want, what stops them, and what honestly doesn't.
 ## Honest limitations of v0
 
 - The default in-memory store binds mythicd to one node — set
-  `MYTHIC_STORE=redis` for multi-node (fail-closed on outage, ADR-0009).
-  The Ed25519 keystore stays per-node (ADR-0006); signing keys are not
-  shared through Redis.
+  `MYTHIC_STORE=redis` for shared challenge/pressure state (fail-closed on
+  outage, ADR-0009). **Signing keys stay per-node** (ADR-0006): a token from
+  node A does not verify against node B's JWKS, so multi-node deployments
+  need same-node JWKS access until a shared keystore (KMS/HSM, M5) lands.
 - Server-observed signals are thin: quantile-calibrated solve-time plausibility
   ([ADR-0008](adr/0008-quantile-solve-time-floor.md)) and per-identity pressure.
   The floor catches hardware that answers faster than any honest worker — it

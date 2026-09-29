@@ -111,3 +111,17 @@ func TestDifficultyNeverExceedsMax(t *testing.T) {
 		t.Fatalf("difficulty above max: %d", res.Difficulty)
 	}
 }
+
+// Red-team H3: the score is a 0-100 contract (token claim `risk`). Hostile
+// tuning must clamp at the engine, not leak 500 into tokens.
+func TestScoreClampedToHundred(t *testing.T) {
+	cfg := risk.DefaultConfig()
+	cfg.FastSolvePenalty = 500
+	res := risk.New(cfg).Evaluate(risk.Input{IP: "1.2.3.4", Attempts: 1, SolveMillis: 1, Difficulty: 18})
+	if res.Score != 100 {
+		t.Fatalf("score must clamp to 100, got %d", res.Score)
+	}
+	if res.Decision != risk.Deny {
+		t.Fatalf("clamped 100 must deny (≥ DenyAt), got %q", res.Decision)
+	}
+}

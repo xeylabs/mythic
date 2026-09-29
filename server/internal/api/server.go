@@ -93,7 +93,7 @@ type attemptsCtxKey struct{}
 func (s *Server) ipLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := clientIP(r, s.cfg.TrustProxy)
-		attempts, err := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow)
+		attempts, err := s.st.IncrIP(limiterKey(ip), s.cfg.IPWindow, s.cfg.IPLimit+1)
 		if err != nil {
 			// Fail closed (ADR-0009): a store outage must not issue
 			// challenges or tokens from uncounted requests.

@@ -51,6 +51,20 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- `server/internal/store`: **pressure counters saturate instead of growing**
+  (red-team H1, 2026-09-29). The sliding window stored one entry per hit —
+  a 429'd flood grew unbounded memory (~16 MB per million hits per
+  identity) and O(n²) CPU on the memory backend's per-hit prune. Counters
+  now cap their stored history at `IPLimit+1` and report saturation as
+  `cap+1`; pinned in the shared contract suite for both backends.
+- `server/internal/risk`: **the risk score is clamped to 0-100** (H3) and
+  tuning penalties are validated ≤ 100 — hostile `MYTHIC_FAST_SOLVE_PENALTY`
+  previously leaked values like 500 into signed token claims.
+- `docs`: **multi-node token verification honestly marked unsolved** (H2) —
+  a PoC confirmed a token from node A does not verify against node B's
+  JWKS (signing keys are per-node, ADR-0006). The Redis store shares
+  challenge/pressure state only; shared keystores (KMS/HSM) remain M5.
+  README, ADR-0009 and the threat model now say so instead of overclaiming.
 - `server`: **every `/v1` request consumes the caller's rate-limit budget
   before validation** (red-team G2 session, 2026-09-29). Invalid-JSON and
   unknown-site-key floods previously bypassed the limiter entirely — 600

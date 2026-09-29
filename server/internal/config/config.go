@@ -83,6 +83,10 @@ func (c Config) validate() error {
 		return fmt.Errorf("risk penalties must be non-negative, got fast=%d per_req=%d max=%d",
 			c.Risk.FastSolvePenalty, c.Risk.PressurePerReq, c.Risk.PressureMax)
 	}
+	if c.Risk.FastSolvePenalty > 100 || c.Risk.PressurePerReq > 100 || c.Risk.PressureMax > 100 {
+		return fmt.Errorf("risk penalties must be ≤ 100 (the score is a 0-100 contract), got fast=%d per_req=%d max=%d",
+			c.Risk.FastSolvePenalty, c.Risk.PressurePerReq, c.Risk.PressureMax)
+	}
 	if c.IPLimit < 1 {
 		return fmt.Errorf("MYTHIC_IP_LIMIT must be ≥ 1, got %d", c.IPLimit)
 	}

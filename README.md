@@ -121,7 +121,7 @@ start** rather than silently weakening the deployment.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MYTHIC_STORE` | `memory` | `memory` (single node) or `redis` (multi-node, ADR-0009) |
+| `MYTHIC_STORE` | `memory` | `memory` (single node) or `redis` (shared challenge/pressure state for multi-node). Signing keys stay per-node — an origin must fetch JWKS from the node that signed the token until a shared keystore lands (ADR-0006/0009) |
 | `MYTHIC_REDIS_ADDR` | `127.0.0.1:6379` | Redis address for `MYTHIC_STORE=redis` — mythicd refuses to start when unreachable |
 | `MYTHIC_REDIS_DB` | `0` | Redis logical DB |
 | `MYTHIC_ADDR` | `:8080` | Listen address |

@@ -42,7 +42,7 @@ func (b *brokenStore) Take(string) (*challenge.Challenge, time.Time, bool, error
 	}
 	return nil, time.Time{}, false, nil
 }
-func (b *brokenStore) IncrIP(string, time.Duration) (int64, error) {
+func (b *brokenStore) IncrIP(string, time.Duration, int64) (int64, error) {
 	if b.failIncr {
 		return 0, errors.New("down")
 	}

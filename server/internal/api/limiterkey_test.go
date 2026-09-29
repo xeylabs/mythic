@@ -46,11 +46,11 @@ func TestLimiterKeySlash64CannotRotateIdentities(t *testing.T) {
 
 	host := func(i int) string { return "2001:db8:aaaa:bbbb::" + hexByte(byte(i%251)) + hexByte(byte(i/251)) }
 	for i := 0; i < 5_000; i++ {
-		if _, err := st.IncrIP(limiterKey(host(i)), time.Minute); err != nil {
+		if _, err := st.IncrIP(limiterKey(host(i)), time.Minute, 1<<20); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if n, _ := st.IncrIP(limiterKey(host(9999)), time.Minute); n != 5_001 {
+	if n, _ := st.IncrIP(limiterKey(host(9999)), time.Minute, 1<<20); n != 5_001 {
 		t.Fatalf("the whole /64 must share a single counter; got count %d", n)
 	}
 }

@@ -31,7 +31,13 @@ type Store interface {
 	Put(ch *challenge.Challenge, issuedAt time.Time) error
 	Get(id string) (*challenge.Challenge, time.Time, bool, error)
 	Take(id string) (*challenge.Challenge, time.Time, bool, error) // atomic single-use fetch+delete
-	IncrIP(ip string, window time.Duration) (int64, error)         // sliding-window count including this hit
+	// IncrIP records a hit and returns the sliding-window count including
+	// it. maxHits caps the stored history per identity: beyond it the count
+	// saturates (returned as maxHits+1) instead of growing memory and CPU
+	// with the flood — a caller over the limit only needs to learn it is
+	// still over (red-team H1: uncapped, 429'd floods grew O(n) memory and
+	// O(n²) CPU per identity).
+	IncrIP(ip string, window time.Duration, maxHits int64) (int64, error)
 	Close()
 }
 
@@ -134,7 +140,7 @@ func (m *Memory) Take(id string) (*challenge.Challenge, time.Time, bool, error) 
 // IncrIP records a hit and returns the sliding-window count including it
 // (ADR-0009): hits older than window no longer count, so a client timed to
 // a boundary cannot double its burst.
-func (m *Memory) IncrIP(ip string, window time.Duration) (int64, error) {
+func (m *Memory) IncrIP(ip string, window time.Duration, maxHits int64) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := time.Now()
@@ -144,6 +150,12 @@ func (m *Memory) IncrIP(ip string, window time.Duration) (int64, error) {
 		if now.Sub(t) < window {
 			kept = append(kept, t)
 		}
+	}
+	if int64(len(kept)) >= maxHits {
+		// Saturated: the identity is far over the limit. Report "still over"
+		// without storing — the window keeps sliding via the entries we hold.
+		m.hits[ip] = kept
+		return maxHits + 1, nil
 	}
 	kept = append(kept, now)
 	m.hits[ip] = kept

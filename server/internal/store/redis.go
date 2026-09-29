@@ -30,12 +30,19 @@ const (
 	ipKeyPrefix = "mythic:ip:"
 
 	// slidingIncr prunes the window, counts what remains, records this hit
-	// and refreshes the key TTL — atomically.
-	// KEYS[1] = counter key; ARGV[1] = now ms, ARGV[2] = window ms, ARGV[3] = unique member.
+	// and refreshes the key TTL — atomically. ARGV[4] caps the stored
+	// history: a saturated identity (red-team H1) returns maxHits+1 without
+	// ZADDing, so a flood cannot grow the ZSET (shared Redis memory) or the
+	// per-call prune cost.
+	// KEYS[1] = counter key; ARGV[1] = now ms, ARGV[2] = window ms,
+	// ARGV[3] = unique member, ARGV[4] = maxHits.
 	slidingIncr = `
 local n = redis.call('ZCARD', KEYS[1])
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', tonumber(ARGV[1]) - tonumber(ARGV[2]))
 n = redis.call('ZCARD', KEYS[1])
+if n >= tonumber(ARGV[4]) then
+  return n + 1
+end
 redis.call('ZADD', KEYS[1], ARGV[1], ARGV[3])
 redis.call('PEXPIRE', KEYS[1], ARGV[2])
 return n + 1`
@@ -110,11 +117,11 @@ func decodeStored(blob []byte) (*challenge.Challenge, time.Time, bool, error) {
 // IncrIP records a hit in the identity's sliding window and returns the
 // count including it — the same semantics the memory store implements.
 // A Redis error propagates: uncounted pressure must not silently pass.
-func (s *Redis) IncrIP(ip string, window time.Duration) (int64, error) {
+func (s *Redis) IncrIP(ip string, window time.Duration, maxHits int64) (int64, error) {
 	now := time.Now()
 	res := s.rdb.Eval(context.Background(), slidingIncr, []string{ipKeyPrefix + ip},
 		now.UnixMilli(), window.Milliseconds(),
-		fmt.Sprintf("%d:%d", now.UnixNano(), s.hitSeq.Add(1)))
+		fmt.Sprintf("%d:%d", now.UnixNano(), s.hitSeq.Add(1)), maxHits)
 	n, err := res.Int64()
 	if err != nil {
 		return 0, fmt.Errorf("store: sliding-window increment: %w", err)

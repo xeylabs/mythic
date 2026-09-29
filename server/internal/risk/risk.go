@@ -117,6 +117,13 @@ func (e *Engine) Evaluate(in Input) Result {
 		}
 	}
 
+	// The score is a 0-100 contract (token claim `risk`, dashboards, tuning
+	// docs). Hostile tuning must clamp here, not leak 500 into tokens
+	// (red-team H3).
+	if score > 100 {
+		score = 100
+	}
+
 	decision := Allow
 	next := e.cfg.BaseDifficulty
 	switch {

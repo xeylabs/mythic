@@ -110,7 +110,7 @@ func TestContractSlidingWindowCounter(t *testing.T) {
 			const window = 200 * time.Millisecond
 			// 5 hits land immediately.
 			for i := 0; i < 5; i++ {
-				n, err := st.IncrIP("a:"+name, window)
+				n, err := st.IncrIP("a:"+name, window, 1<<20)
 				if err != nil {
 					t.Fatalf("incr: %v", err)
 				}
@@ -122,12 +122,57 @@ func TestContractSlidingWindowCounter(t *testing.T) {
 			// a client timed to a window boundary cannot double its burst
 			// (the fixed-window flaw this replaces).
 			time.Sleep(window + 50*time.Millisecond)
-			if n, _ := st.IncrIP("a:"+name, window); n != 1 {
+			if n, _ := st.IncrIP("a:"+name, window, 1<<20); n != 1 {
 				t.Fatalf("count after window must reset to 1, got %d", n)
 			}
 			// Different identities count independently.
-			if n, _ := st.IncrIP("b:"+name, window); n != 1 {
+			if n, _ := st.IncrIP("b:"+name, window, 1<<20); n != 1 {
 				t.Fatalf("independent identity must start at 1, got %d", n)
+			}
+		})
+	}
+}
+
+// Red-team H1: a saturated identity must report "still over" without
+// growing its stored history — the flood pays nothing in memory or CPU.
+func TestContractCounterSaturatesInsteadOfGrowing(t *testing.T) {
+	for name, st := range newBackends(t) {
+		t.Run(name, func(t *testing.T) {
+			const window = time.Minute
+			const cap0 = int64(10)
+			for i := int64(1); i <= cap0; i++ {
+				n, err := st.IncrIP("sat:"+name, window, cap0)
+				if err != nil {
+					t.Fatalf("incr: %v", err)
+				}
+				if n != i {
+					t.Fatalf("hit %d counted as %d", i, n)
+				}
+			}
+			// Hammer past the cap: the count must never drop back to
+			// "under the limit" while hits keep landing inside the window.
+			// The stored history caps at maxHits, and as old members age out
+			// the count may dip to exactly maxHits — still over the limit,
+			// still a 429 — but never below. (miniredis interprets Lua per
+			// call, so the redis subtest hammers a handful; the property —
+			// and the Lua-side cap itself — is identical.)
+			extra := 100_000
+			if name == "redis" {
+				extra = 20
+			}
+			for i := 0; i < extra; i++ {
+				n, err := st.IncrIP("sat:"+name, window, cap0)
+				if err != nil {
+					t.Fatalf("incr: %v", err)
+				}
+				if n < cap0 {
+					t.Fatalf("saturated identity must never count below %d inside the window, got %d at extra hit %d", cap0, n, i)
+				}
+			}
+			// Once the window slides past the stored hits, counting resumes.
+			time.Sleep(50 * time.Millisecond)
+			if n, _ := st.IncrIP("sat-fresh:"+name, 10*time.Millisecond, cap0); n != 1 {
+				t.Fatalf("fresh window must count from 1 again, got %d", n)
 			}
 		})
 	}
@@ -143,7 +188,7 @@ func TestContractRedisFailsClosedWhenServerDies(t *testing.T) {
 
 	mr.Close() // the "outage"
 
-	if _, err := rs.IncrIP("x", time.Minute); err == nil {
+	if _, err := rs.IncrIP("x", time.Minute, 1<<20); err == nil {
 		t.Fatal("counter must report the outage, not swallow it (fail closed)")
 	}
 	if err := rs.Put(&challenge.Challenge{ID: "x"}, time.Now()); err == nil {

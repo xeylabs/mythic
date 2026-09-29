@@ -37,14 +37,20 @@ takes that step (roadmap M1).
 
 ## Consequences
 
-- Multi-node mythicd is now a deployment choice, not a code change: point
-  every node at the same Redis and the store is the shared state (the
-  keystore stays per-node, ADR-0006).
-- Restarts no longer orphan issued challenges; the store outlives the
+- The store is the only state that becomes shared. **Signing keys do not**:
+  each node keeps its own keystore (ADR-0006) and serves its own JWKS, so a
+  token signed by node A is not verifiable against node B's JWKS — a
+  red-team PoC confirmed exactly that (2026-09-29). Until a shared keystore
+  (KMS/HSM, M5) lands, origins must fetch JWKS from the node that signed
+  the token, or pin per-node keys. Multi-node token verification is NOT
+  solved by this ADR.
+- Restart no longer orphans issued challenges; the store outlives the
   process.
 - Redis becomes an operational dependency for scaled deployments — its
   availability now bounds challenge issuance (fail closed by choice: a
   verifier that cannot decide should not issue tokens).
-- The memory store changes window semantics (fixed → sliding); both
-  backends are covered by the same contract tests, so the semantics cannot
-  drift apart again.
+- The memory store changes window semantics (fixed → sliding) and counters
+  saturate at `IPLimit+1` instead of growing with the flood — a red-team
+  PoC showed an uncapped sliding window cost ~16 MB of heap and O(n²) CPU
+  per million flooded hits per identity. Both backends share one contract
+  suite, so the semantics cannot drift apart again.

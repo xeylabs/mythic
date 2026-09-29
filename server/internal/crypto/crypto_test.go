@@ -211,7 +211,10 @@ func mustLegacyToken(t *testing.T, seed []byte) string {
 }
 
 func TestRetiredKeysExpire(t *testing.T) {
-	km, err := crypto.LoadOrCreateWithPolicy("", 0, 0, nil) // retention 0: prune on next rotation
+	// Retention 100ms + a real sleep between rotations: deterministic even
+	// when parallel tests slow the clock down (retention 0 relied on two
+	// rotations landing on different timestamps — flaky under -race).
+	km, err := crypto.LoadOrCreateWithPolicy("", 0, 100*time.Millisecond, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,14 +224,14 @@ func TestRetiredKeysExpire(t *testing.T) {
 	if err := km.Rotate(); err != nil {
 		t.Fatal(err)
 	}
-	_, _, second := signProbe(t, km)
+	time.Sleep(150 * time.Millisecond)
 	if err := km.Rotate(); err != nil {
 		t.Fatal(err)
 	}
 
 	kids := jwksKids(t, km)
 	if len(kids) != 2 {
-		t.Fatalf("retention 0 must prune older retired keys, got %v", kids)
+		t.Fatalf("expired retention must prune older retired keys, got %v", kids)
 	}
 	if kids[0] != km.KeyID() {
 		t.Fatalf("first JWKS entry must be the active key, got %v", kids)
@@ -238,7 +241,6 @@ func TestRetiredKeysExpire(t *testing.T) {
 			t.Fatalf("pruned key %s must no longer be advertised", first)
 		}
 	}
-	_ = second
 }
 
 func TestRotateIfDueHonorsMaxAge(t *testing.T) {
