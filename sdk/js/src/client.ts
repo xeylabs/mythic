@@ -2,7 +2,9 @@
 // SPDX-FileCopyrightText: 2026 xeylabs
 
 import { solve } from "./pow";
+import { solveInWorker } from "./worker";
 import { collectSignals } from "./signals";
+import { BehavioralCollector } from "./behavioral";
 import type { Challenge, ClientSignals, Decision, Solution, VerifyResult } from "./types";
 
 export interface MythicOptions {
@@ -12,6 +14,13 @@ export interface MythicOptions {
   siteKey: string;
   /** AbortSignal forwarded to every fetch and to the PoW grind. */
   signal?: AbortSignal;
+  /** Use a Web Worker for PoW solving (default true in browsers).
+   *  Keeps the page responsive at high difficulty. Falls back to
+   *  main thread when Workers are unavailable. */
+  useWorker?: boolean;
+  /** Collect behavioral biometrics (default true in browsers).
+   *  Privacy-preserving aggregates only (ADR-0011). */
+  collectBehavior?: boolean;
 }
 
 export class MythicError extends Error {
@@ -34,7 +43,16 @@ interface ChallengeResponse {
 }
 
 export class MythicClient {
-  constructor(private readonly opts: MythicOptions) {}
+  private readonly collector: BehavioralCollector | null;
+
+  constructor(private readonly opts: MythicOptions) {
+    // Start behavioral collection early (if enabled and in browser).
+    this.collector = null;
+    if (opts.collectBehavior !== false && typeof window !== "undefined") {
+      this.collector = new BehavioralCollector();
+      this.collector.start();
+    }
+  }
 
   private url(path: string): string {
     return `${this.opts.endpoint.replace(/\/+$/, "")}${path}`;
@@ -64,8 +82,17 @@ export class MythicClient {
 
   /** Full flow: request challenge → grind PoW → redeem → signed token. */
   async getToken(): Promise<VerifyResult> {
-    const { challenge } = await this.requestChallenge();
-    const solution = await solve(challenge, { signal: this.opts.signal });
+    const hints = collectSignals();
+    // Attach behavioral features if collecting.
+    if (this.collector) {
+      hints.behavioral = this.collector.extract();
+      this.collector.stop();
+    }
+    const { challenge } = await this.requestChallenge(hints);
+    const useWorker = this.opts.useWorker !== false;
+    const solution = useWorker
+      ? await solveInWorker(challenge, { signal: this.opts.signal })
+      : await solve(challenge, { signal: this.opts.signal });
     return this.verify(challenge, solution);
   }
 }
