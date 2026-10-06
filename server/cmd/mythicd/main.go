@@ -73,6 +73,19 @@ func main() {
 		TrustProxy:   cfg.TrustProxy,
 	}, km, st, risk.New(cfg.Risk), log)
 
+	// ADR-0010: ASN lookup. Empty path = signal disabled (valid).
+	// Non-empty path that fails to open = fatal (fail-closed on
+	// misconfiguration, not silent degradation).
+	asnLookup, err := api.NewASNLookup(cfg.ASNDBPath, log)
+	if err != nil {
+		log.Error("asn database failed to open", "path", cfg.ASNDBPath, "err", err)
+		os.Exit(1)
+	}
+	if asnLookup != nil {
+		defer asnLookup.Close()
+		srv.WithASNLookup(asnLookup)
+	}
+
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           srv.Handler(),

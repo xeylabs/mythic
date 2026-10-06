@@ -32,6 +32,7 @@ type Config struct {
 	RedisDB      int           // Redis logical DB (default 0)
 	KeyMaxAge    time.Duration // active-key lifetime; 0 disables auto-rotation (ADR-0006)
 	KeyRetention time.Duration // how long retired keys stay in the JWKS after rotation
+	ASNDBPath    string        // path to MaxMind GeoLite2-ASN database; empty = ASN signal disabled (ADR-0010)
 	Risk         risk.Config   // risk-engine tuning: thresholds are deployment-side security margin
 	LogLevel     slog.Level
 }
@@ -52,6 +53,7 @@ func FromEnv() (Config, error) {
 		RedisDB:      int(envInt64("MYTHIC_REDIS_DB", 0)),
 		KeyMaxAge:    envDur("MYTHIC_KEY_MAX_AGE", 720*time.Hour),
 		KeyRetention: envDur("MYTHIC_KEY_RETENTION", crypto.DefaultKeyRetention),
+		ASNDBPath:    env("MYTHIC_ASN_DB", ""),
 		Risk:         riskConfig(),
 		LogLevel:     slog.LevelInfo,
 	}

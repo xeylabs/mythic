@@ -135,6 +135,7 @@ start** rather than silently weakening the deployment.
 | `MYTHIC_IP_WINDOW` | `1m` | Per-IP pressure window |
 | `MYTHIC_IP_LIMIT` | `120` | Max requests per IP per window |
 | `MYTHIC_TRUST_PROXY` | `false` | Honor `X-Forwarded-For` — only behind a proxy that overwrites it |
+| `MYTHIC_ASN_DB` | _(empty)_ | Path to MaxMind GeoLite2-ASN database; empty = ASN signal disabled |
 | `MYTHIC_LOG_LEVEL` | `info` | `info` or `debug` |
 | `MYTHIC_BASE_DIFFICULTY` | `18` | Base PoW difficulty (2^N hashes) |
 | `MYTHIC_MAX_DIFFICULTY` | `26` | Difficulty ceiling |

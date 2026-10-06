@@ -44,6 +44,7 @@ type Server struct {
 	st  store.Store
 	eng *risk.Engine
 	log *slog.Logger
+	asn *ASNLookup // nil = ASN signal disabled (ADR-0010)
 }
 
 func New(cfg Config, km *crypto.KeyManager, st store.Store, eng *risk.Engine, log *slog.Logger) *Server {
@@ -68,6 +69,13 @@ func New(cfg Config, km *crypto.KeyManager, st store.Store, eng *risk.Engine, lo
 		cfg.TokenTTL = cfg.ChallengeTTL
 	}
 	return &Server{cfg: cfg, km: km, st: st, eng: eng, log: log}
+}
+
+// WithASNLookup attaches an ASN resolver for the ADR-0010 network signal.
+// Nil disables the signal. Returns the server for chaining.
+func (s *Server) WithASNLookup(a *ASNLookup) *Server {
+	s.asn = a
+	return s
 }
 
 func (s *Server) Handler() http.Handler {
@@ -161,6 +169,7 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 		Attempts:       attempts,
 		ClientSignals:  req.Hints,
 		JA4Fingerprint: ja4From(r, s.cfg.TrustProxy),
+		ASN:            s.asn.ASN(ip),
 		Behavior:       behaviorFrom(req.Hints),
 	})
 	if res.Decision == risk.Deny {
@@ -236,6 +245,7 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 		Difficulty:     ch.Difficulty,
 		ClientSignals:  req.Hints,
 		JA4Fingerprint: ja4From(r, s.cfg.TrustProxy),
+		ASN:            s.asn.ASN(ip),
 		Behavior:       behaviorFrom(req.Hints),
 	})
 	if res.Decision == risk.Deny {
