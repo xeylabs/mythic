@@ -33,7 +33,6 @@ export class BehavioralCollector {
   private scrolls: number[] = [];
   private scrollReversals = 0;
   private lastScrollDir = 0;
-  private startTime = 0;
   private active = false;
 
   private onMouseMove = (e: MouseEvent) => this.recordPoint(e.clientX, e.clientY);
@@ -68,7 +67,6 @@ export class BehavioralCollector {
   start(): void {
     if (this.active || typeof window === "undefined") return;
     this.active = true;
-    this.startTime = performance.now();
     window.addEventListener("mousemove", this.onMouseMove, { passive: true });
     window.addEventListener("keydown", this.onKeyDown, { passive: true });
     window.addEventListener("keyup", this.onKeyUp, { passive: true });
@@ -111,8 +109,8 @@ export class BehavioralCollector {
       let totalDist = 0;
 
       for (let i = 1; i < this.points.length; i++) {
-        const p0 = this.points[i - 1];
-        const p1 = this.points[i];
+        const p0 = this.points[i - 1]!;
+        const p1 = this.points[i]!;
         const dt = Math.max(p1.t - p0.t, 1);
         const dx = p1.x - p0.x;
         const dy = p1.y - p0.y;
@@ -141,8 +139,8 @@ export class BehavioralCollector {
       f.mouse_dir_changes = directionChanges;
       // Curvature: ratio of path length to straight-line distance.
       // Humans ~1.2-3.0 (curvy); bots ~1.0 (straight) or teleport (>10).
-      const p0 = this.points[0];
-      const pN = this.points[this.points.length - 1];
+      const p0 = this.points[0]!;
+      const pN = this.points[this.points.length - 1]!;
       const straight = Math.hypot(pN.x - p0.x, pN.y - p0.y);
       f.mouse_curvature = straight > 0 ? Math.round((totalDist / straight) * 100) / 100 : 0;
     } else {
