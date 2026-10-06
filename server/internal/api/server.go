@@ -156,10 +156,11 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 	attempts := attemptsFrom(r)
 
 	res := s.eng.Evaluate(risk.Input{
-		IP:            limiterKey(ip),
-		SiteKey:       req.SiteKey,
-		Attempts:      attempts,
-		ClientSignals: req.Hints,
+		IP:             limiterKey(ip),
+		SiteKey:        req.SiteKey,
+		Attempts:       attempts,
+		ClientSignals:  req.Hints,
+		JA4Fingerprint: ja4From(r, s.cfg.TrustProxy),
 	})
 	if res.Decision == risk.Deny {
 		writeJSON(w, http.StatusForbidden, map[string]any{"decision": string(res.Decision), "risk": res.Score})
@@ -227,12 +228,13 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := s.eng.Evaluate(risk.Input{
-		IP:            limiterKey(ip),
-		SiteKey:       ch.SiteKey,
-		Attempts:      attempts,
-		SolveMillis:   time.Since(issuedAt).Milliseconds(),
-		Difficulty:    ch.Difficulty,
-		ClientSignals: req.Hints,
+		IP:             limiterKey(ip),
+		SiteKey:        ch.SiteKey,
+		Attempts:       attempts,
+		SolveMillis:    time.Since(issuedAt).Milliseconds(),
+		Difficulty:     ch.Difficulty,
+		ClientSignals:  req.Hints,
+		JA4Fingerprint: ja4From(r, s.cfg.TrustProxy),
 	})
 	if res.Decision == risk.Deny {
 		writeJSON(w, http.StatusForbidden, map[string]any{"decision": string(res.Decision), "risk": res.Score})
@@ -308,6 +310,18 @@ func clientIP(r *http.Request, trustProxy bool) string {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+// ja4From extracts the JA4 TLS fingerprint injected by the trusted reverse
+// proxy (ADR-0010). The header is attacker-controlled input — it is only
+// honored when TrustProxy is true, i.e. the operator has asserted the proxy
+// overwrites it (same trust gate as X-Forwarded-For, ADR-0005). Otherwise
+// it is ignored entirely: an empty fingerprint scores nothing.
+func ja4From(r *http.Request, trustProxy bool) string {
+	if !trustProxy {
+		return ""
+	}
+	return strings.TrimSpace(r.Header.Get("X-Mythic-JA4"))
 }
 
 // limiterKey aggregates a client address to the identity the limiter and

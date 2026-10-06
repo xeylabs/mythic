@@ -31,6 +31,11 @@ type Input struct {
 	SolveMillis   int64          // server-measured solve time for the challenge being redeemed; 0 = unknown
 	Difficulty    int            // difficulty of that challenge
 	ClientSignals map[string]any // advisory hints reported by the SDK
+	// ADR-0010: network-layer advisory signals. JA4Fingerprint comes from
+	// the trusted proxy's X-Mythic-JA4 header (empty = unavailable, not an
+	// error). ASN is the client IP's autonomous system number (0 = unknown).
+	JA4Fingerprint string
+	ASN            uint
 }
 
 // Result is the engine verdict plus the PoW difficulty for the next challenge.
@@ -52,6 +57,18 @@ type Config struct {
 	PressurePerReq   int
 	PressureMax      int
 	AdvisoryPenalty  map[string]int
+	// ADR-0010: hard caps for network-layer advisory signals. Neither can
+	// decide alone — they raise the cost of blending in.
+	JA4AnomalyPenalty int // max points for unknown/suspicious JA4 (default 15)
+	JA4KnownDiscount  int // max discount for known-good browser JA4 (default 5)
+	ASNHostingPenalty int // max points for datacenter/hosting ASN (default 10)
+	// KnownJA4Prefixes are JA4_a prefixes of mainstream browsers. Matching
+	// earns the discount; anything else is scored as anomalous. This is a
+	// heuristic, not an allowlist — see ADR-0010.
+	KnownJA4Prefixes []string
+	// HostingASNs are ASNs known to belong to datacenter/hosting providers.
+	// Matching adds the hosting penalty. Heuristic, not a blocklist.
+	HostingASNs map[uint]bool
 }
 
 func DefaultConfig() Config {
@@ -68,6 +85,28 @@ func DefaultConfig() Config {
 			"webdriver":    15, // navigator.webdriver === true: automation by definition
 			"headless":     10, // browser claims Chrome but lacks chrome object, etc.
 			"no_languages": 5,  // navigator.languages empty: common in headless default profiles
+		},
+		JA4AnomalyPenalty: 15,
+		JA4KnownDiscount:  5,
+		ASNHostingPenalty: 10,
+		// JA4_a prefixes observed from mainstream browsers (2026).
+		// These earn a small discount; everything else is anomalous.
+		// Heuristic — attackers can parrot any fingerprint (ADR-0010).
+		KnownJA4Prefixes: []string{
+			"t13d1516h2_8daaf6152771", // Chrome/Chromium
+			"t13d1516h2_5b0d8b67751f", // Firefox
+		},
+		HostingASNs: map[uint]bool{
+			16509: true, // AWS
+			14618: true, // AWS
+			15169: true, // Google
+			8075:  true, // Microsoft
+			14061: true, // DigitalOcean
+			20473: true, // Vultr
+			63949: true, // Linode
+			16276: true, // OVH
+			12876: true, // Scaleway/Online
+			9009:  true, // M247
 		},
 	}
 }
@@ -115,6 +154,40 @@ func (e *Engine) Evaluate(in Input) Result {
 		if v, ok := in.ClientSignals[name].(bool); ok && v {
 			add(e.cfg.AdvisoryPenalty[name], "advisory_"+name)
 		}
+	}
+
+	// ADR-0010: JA4 TLS fingerprint — advisory, hard-capped. Empty means
+	// the signal is unavailable (no proxy header), which scores nothing.
+	// A known-good browser fingerprint earns a small discount; anything
+	// else is anomalous. Attackers can parrot any fingerprint, so this
+	// raises blending cost, never proves humanity.
+	if in.JA4Fingerprint != "" {
+		known := false
+		for _, prefix := range e.cfg.KnownJA4Prefixes {
+			if len(in.JA4Fingerprint) >= len(prefix) &&
+				in.JA4Fingerprint[:len(prefix)] == prefix {
+				known = true
+				break
+			}
+		}
+		if known {
+			// Discount, not a negative add — applied as score reduction.
+			if score >= e.cfg.JA4KnownDiscount {
+				score -= e.cfg.JA4KnownDiscount
+			} else {
+				score = 0
+			}
+			reasons = append(reasons, fmt.Sprintf("ja4_known(-%d)", e.cfg.JA4KnownDiscount))
+		} else {
+			add(e.cfg.JA4AnomalyPenalty, "ja4_anomaly")
+		}
+	}
+
+	// ADR-0010: ASN — advisory, hard-capped. 0 means unknown (no DB or no
+	// match), which scores nothing. Datacenter/hosting ASNs add risk;
+	// residential/ISP ASNs are neutral. Heuristic, not a blocklist.
+	if in.ASN != 0 && e.cfg.HostingASNs[in.ASN] {
+		add(e.cfg.ASNHostingPenalty, "asn_hosting")
 	}
 
 	// The score is a 0-100 contract (token claim `risk`, dashboards, tuning
