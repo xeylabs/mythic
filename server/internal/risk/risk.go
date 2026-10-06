@@ -117,6 +117,38 @@ type Engine struct {
 
 func New(cfg Config) *Engine { return &Engine{cfg: cfg} }
 
+// isPlausibleJA4 checks minimal JA4 structure: three underscore-separated
+// sections (a_b_c), each non-empty. This rejects prefix-only or otherwise
+// truncated junk from earning the known-browser discount — a real proxy
+// always emits the full fingerprint. Not a full JA4 validator; the signal
+// is advisory, and strict parsing would just create a new evasion surface.
+func isPlausibleJA4(fp string) bool {
+	parts := 0
+	start := 0
+	for i := 0; i <= len(fp); i++ {
+		if i == len(fp) || fp[i] == '_' {
+			if i-start == 0 {
+				return false // empty section
+			}
+			parts++
+			start = i + 1
+		}
+	}
+	return parts >= 3
+}
+
+// isKnownJA4 reports whether fp starts with a known browser JA4_a prefix
+// and is structurally plausible. Prefix-only input is rejected by the
+// plausibility check first.
+func isKnownJA4(fp string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if len(fp) >= len(prefix) && fp[:len(prefix)] == prefix {
+			return true
+		}
+	}
+	return false
+}
+
 func (e *Engine) Evaluate(in Input) Result {
 	score := 0
 	var reasons []string
@@ -162,15 +194,10 @@ func (e *Engine) Evaluate(in Input) Result {
 	// else is anomalous. Attackers can parrot any fingerprint, so this
 	// raises blending cost, never proves humanity.
 	if in.JA4Fingerprint != "" {
-		known := false
-		for _, prefix := range e.cfg.KnownJA4Prefixes {
-			if len(in.JA4Fingerprint) >= len(prefix) &&
-				in.JA4Fingerprint[:len(prefix)] == prefix {
-				known = true
-				break
-			}
-		}
-		if known {
+		if !isPlausibleJA4(in.JA4Fingerprint) {
+			// Malformed: not even shaped like a JA4. Anomalous, no discount.
+			add(e.cfg.JA4AnomalyPenalty, "ja4_malformed")
+		} else if isKnownJA4(in.JA4Fingerprint, e.cfg.KnownJA4Prefixes) {
 			// Discount, not a negative add — applied as score reduction.
 			if score >= e.cfg.JA4KnownDiscount {
 				score -= e.cfg.JA4KnownDiscount
