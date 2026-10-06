@@ -55,10 +55,10 @@ func TestJA4AnomalyCapped(t *testing.T) {
 func TestJA4MalformedNoDiscount(t *testing.T) {
 	eng := risk.New(risk.DefaultConfig())
 	for _, fp := range []string{
-		"t13d1516h2_8daaf6152771",       // prefix only, no _b_c
-		"t13d1516h2_8daaf6152771_",      // trailing empty section
-		"t13d1516h2__e8f1bf7b9c16",      // empty middle section
-		"_8daaf6152771_e8f1bf7b9c16",    // empty first section
+		"t13d1516h2_8daaf6152771",    // prefix only, no _b_c
+		"t13d1516h2_8daaf6152771_",   // trailing empty section
+		"t13d1516h2__e8f1bf7b9c16",   // empty middle section
+		"_8daaf6152771_e8f1bf7b9c16", // empty first section
 	} {
 		r := eng.Evaluate(risk.Input{IP: "1.2.3.4", SiteKey: "s", JA4Fingerprint: fp})
 		if r.Score != 15 {
@@ -75,6 +75,7 @@ func TestJA4MalformedNoDiscount(t *testing.T) {
 		}
 	}
 }
+
 // TestJA4ParrotBypass: an attacker parroting a known Chrome fingerprint
 // gets the discount. This is the documented bypass — JA4 raises the cost
 // of blending in, it does not prove humanity (ADR-0010).

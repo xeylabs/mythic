@@ -36,6 +36,25 @@ type Input struct {
 	// error). ASN is the client IP's autonomous system number (0 = unknown).
 	JA4Fingerprint string
 	ASN            uint
+	// ADR-0011: behavioral biometrics (privacy-preserving aggregates from
+	// SDK). Nil = no data (JS disabled, SDK not loaded) = zero contribution,
+	// not a penalty.
+	Behavior *BehavioralFeatures
+}
+
+// BehavioralFeatures are privacy-preserving aggregates extracted in-SDK.
+// No raw coordinates, key identities, or scroll positions (ADR-0011).
+type BehavioralFeatures struct {
+	MousePoints     int     `json:"mouse_points"`
+	MouseMeanV      float64 `json:"mouse_mean_v"`      // px/ms
+	MouseVarV       float64 `json:"mouse_var_v"`       // velocity variance
+	MouseDirChanges int     `json:"mouse_dir_changes"` // significant turns
+	MouseCurvature  float64 `json:"mouse_curvature"`   // path/straight ratio
+	KeyDwells       int     `json:"key_dwells"`        // keystroke count
+	KeyMeanDwell    float64 `json:"key_mean_dwell"`    // ms
+	KeyMeanFlight   float64 `json:"key_mean_flight"`   // ms
+	ScrollEvents    int     `json:"scroll_events"`
+	ScrollReversals int     `json:"scroll_reversals"`
 }
 
 // Result is the engine verdict plus the PoW difficulty for the next challenge.
@@ -62,6 +81,8 @@ type Config struct {
 	JA4AnomalyPenalty int // max points for unknown/suspicious JA4 (default 15)
 	JA4KnownDiscount  int // max discount for known-good browser JA4 (default 5)
 	ASNHostingPenalty int // max points for datacenter/hosting ASN (default 10)
+	// ADR-0011: hard cap for combined behavioral signals (default 20).
+	BehavioralMaxPenalty int
 	// KnownJA4Prefixes are JA4_a prefixes of mainstream browsers. Matching
 	// earns the discount; anything else is scored as anomalous. This is a
 	// heuristic, not an allowlist — see ADR-0010.
@@ -86,9 +107,10 @@ func DefaultConfig() Config {
 			"headless":     10, // browser claims Chrome but lacks chrome object, etc.
 			"no_languages": 5,  // navigator.languages empty: common in headless default profiles
 		},
-		JA4AnomalyPenalty: 15,
-		JA4KnownDiscount:  5,
-		ASNHostingPenalty: 10,
+		JA4AnomalyPenalty:    15,
+		JA4KnownDiscount:     5,
+		ASNHostingPenalty:    10,
+		BehavioralMaxPenalty: 20,
 		// JA4_a prefixes observed from mainstream browsers (2026).
 		// These earn a small discount; everything else is anomalous.
 		// Heuristic — attackers can parrot any fingerprint (ADR-0010).
@@ -147,6 +169,67 @@ func isKnownJA4(fp string, prefixes []string) bool {
 		}
 	}
 	return false
+}
+
+// behavioralScore evaluates human-plausibility of behavioral features.
+// Returns 0-20 (hard cap per ADR-0011). Higher = more bot-like.
+//
+// Calibrated from HCI literature ranges, not from tracking users:
+//   - Human mouse: curved paths (curvature 1.2-3.0), variable velocity
+//   - Human keystroke: dwell 50-200ms, flight 50-500ms
+//   - Bots: straight lines (curvature ~1.0), teleportation (>10),
+//     zero variance (scripted), or no data at all
+func behavioralScore(b *BehavioralFeatures, cfg Config) int {
+	score := 0
+	cap := 20
+	if cfg.BehavioralMaxPenalty > 0 {
+		cap = cfg.BehavioralMaxPenalty
+	}
+
+	// No mouse data at all + no keyboard + no scroll = suspicious
+	// (but not decisive — could be a keyboard-only user, hence small).
+	if b.MousePoints < 5 && b.KeyDwells == 0 && b.ScrollEvents == 0 {
+		score += 8
+	}
+
+	// Mouse trajectory analysis (only if we have enough points).
+	if b.MousePoints >= 5 {
+		// Perfectly straight line (curvature ~1.0) = scripted.
+		if b.MouseCurvature > 0 && b.MouseCurvature < 1.1 {
+			score += 8
+		}
+		// Teleportation (curvature > 10) = non-human jumps.
+		if b.MouseCurvature > 10 {
+			score += 10
+		}
+		// Zero velocity variance = constant speed = scripted.
+		// Humans have variable speed (accelerate/decelerate).
+		if b.MouseVarV == 0 && b.MouseMeanV > 0 {
+			score += 8
+		}
+		// No direction changes over many points = straight-line bot.
+		if b.MousePoints >= 20 && b.MouseDirChanges == 0 {
+			score += 6
+		}
+	}
+
+	// Keystroke dynamics (only if we have samples).
+	if b.KeyDwells > 0 {
+		// Inhumanly fast (avg < 20ms dwell) = automated.
+		if b.KeyMeanDwell > 0 && b.KeyMeanDwell < 20 {
+			score += 6
+		}
+		// Inhumanly slow (avg > 2000ms) = possible farm worker thinking,
+		// but also could be a slow typist — small penalty.
+		if b.KeyMeanDwell > 2000 {
+			score += 3
+		}
+	}
+
+	if score > cap {
+		score = cap
+	}
+	return score
 }
 
 func (e *Engine) Evaluate(in Input) Result {
@@ -215,6 +298,13 @@ func (e *Engine) Evaluate(in Input) Result {
 	// residential/ISP ASNs are neutral. Heuristic, not a blocklist.
 	if in.ASN != 0 && e.cfg.HostingASNs[in.ASN] {
 		add(e.cfg.ASNHostingPenalty, "asn_hosting")
+	}
+
+	// ADR-0011: behavioral biometrics — advisory, hard-capped at 20 total.
+	// Nil (no data) scores nothing, not a penalty. The signals check for
+	// human-plausible patterns; absence of evidence is not evidence of bot.
+	if in.Behavior != nil {
+		add(behavioralScore(in.Behavior, e.cfg), "behavioral")
 	}
 
 	// The score is a 0-100 contract (token claim `risk`, dashboards, tuning

@@ -32,6 +32,37 @@ export interface VerifyResult {
 }
 
 /**
+ * Privacy-preserving behavioral features (ADR-0011).
+ *
+ * Aggregates only — no raw coordinates, key identities, or scroll positions.
+ * All values quantized. Versioned for wire evolution.
+ */
+export interface BehavioralFeatures {
+  /** Schema version. */
+  v: 1;
+  /** Number of mouse points sampled. */
+  mouse_points?: number;
+  /** Mean pointer velocity (px/ms). */
+  mouse_mean_v?: number;
+  /** Velocity variance. */
+  mouse_var_v?: number;
+  /** Significant direction changes. */
+  mouse_dir_changes?: number;
+  /** Path length / straight-line distance. Human ~1.2-3.0. */
+  mouse_curvature?: number;
+  /** Number of keystrokes (dwell samples). */
+  key_dwells?: number;
+  /** Mean key dwell time (ms). */
+  key_mean_dwell?: number;
+  /** Mean flight time between keys (ms). */
+  key_mean_flight?: number;
+  /** Scroll event count. */
+  scroll_events?: number;
+  /** Scroll direction reversals. */
+  scroll_reversals?: number;
+}
+
+/**
  * Advisory client-reported hints. FORGEABLE BY DESIGN — the server caps their
  * weight and they can never decide alone (ADR-0004). Honest reporting earns a
  * discount; lying only loses it.
@@ -43,5 +74,7 @@ export interface ClientSignals {
   headless?: boolean;
   /** navigator.languages empty — typical of headless default profiles. */
   no_languages?: boolean;
+  /** Behavioral biometrics (ADR-0011). Advisory, weight-capped. */
+  behavioral?: BehavioralFeatures;
   [key: string]: unknown;
 }
