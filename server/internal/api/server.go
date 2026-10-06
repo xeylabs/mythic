@@ -161,6 +161,7 @@ func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 		Attempts:       attempts,
 		ClientSignals:  req.Hints,
 		JA4Fingerprint: ja4From(r, s.cfg.TrustProxy),
+		Behavior:       behaviorFrom(req.Hints),
 	})
 	if res.Decision == risk.Deny {
 		writeJSON(w, http.StatusForbidden, map[string]any{"decision": string(res.Decision), "risk": res.Score})
@@ -235,6 +236,7 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 		Difficulty:     ch.Difficulty,
 		ClientSignals:  req.Hints,
 		JA4Fingerprint: ja4From(r, s.cfg.TrustProxy),
+		Behavior:       behaviorFrom(req.Hints),
 	})
 	if res.Decision == risk.Deny {
 		writeJSON(w, http.StatusForbidden, map[string]any{"decision": string(res.Decision), "risk": res.Score})
@@ -322,6 +324,53 @@ func ja4From(r *http.Request, trustProxy bool) string {
 		return ""
 	}
 	return strings.TrimSpace(r.Header.Get("X-Mythic-JA4"))
+}
+
+// behaviorFrom extracts privacy-preserving behavioral features from the
+// client's hints map (ADR-0011). Returns nil if absent or malformed —
+// absent data scores nothing, not a penalty. Type-safe: wrong types are
+// ignored, never crash.
+func behaviorFrom(hints map[string]any) *risk.BehavioralFeatures {
+	if hints == nil {
+		return nil
+	}
+	raw, ok := hints["behavioral"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	b := &risk.BehavioralFeatures{}
+	// Extract each field with type assertion; wrong types → zero value.
+	if v, ok := raw["mouse_points"].(float64); ok {
+		b.MousePoints = int(v)
+	}
+	if v, ok := raw["mouse_mean_v"].(float64); ok {
+		b.MouseMeanV = v
+	}
+	if v, ok := raw["mouse_var_v"].(float64); ok {
+		b.MouseVarV = v
+	}
+	if v, ok := raw["mouse_dir_changes"].(float64); ok {
+		b.MouseDirChanges = int(v)
+	}
+	if v, ok := raw["mouse_curvature"].(float64); ok {
+		b.MouseCurvature = v
+	}
+	if v, ok := raw["key_dwells"].(float64); ok {
+		b.KeyDwells = int(v)
+	}
+	if v, ok := raw["key_mean_dwell"].(float64); ok {
+		b.KeyMeanDwell = v
+	}
+	if v, ok := raw["key_mean_flight"].(float64); ok {
+		b.KeyMeanFlight = v
+	}
+	if v, ok := raw["scroll_events"].(float64); ok {
+		b.ScrollEvents = int(v)
+	}
+	if v, ok := raw["scroll_reversals"].(float64); ok {
+		b.ScrollReversals = int(v)
+	}
+	return b
 }
 
 // limiterKey aggregates a client address to the identity the limiter and
