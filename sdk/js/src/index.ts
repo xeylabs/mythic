@@ -9,4 +9,6 @@ export { collectSignals } from "./signals";
 export { BehavioralCollector } from "./behavioral";
 export { solveInWorker } from "./worker";
 export type { SolveInWorkerOptions } from "./worker";
-export type { Challenge, Solution, VerifyResult, Decision, ClientSignals, BehavioralFeatures } from "./types";
+export { parsePublicKey, verifyToken, TokenError } from "./verify";
+export type { TokenClaims } from "./verify";
+export type { Challenge, Solution, VerifyResult, ClientSignals, BehavioralFeatures } from "./types";

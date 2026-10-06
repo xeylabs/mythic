@@ -1,0 +1,14 @@
+[project]
+name = "mythic"
+version = "0.1.0"
+description = "Mythic origin verification helpers"
+requires-python = ">=3.9"
+dependencies = ["cryptography>=41.0"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mythic*"]

@@ -24,3 +24,4 @@ Thumbs.db
 
 # The org site repo is cloned inside only for convenience
 xeylabs.github.io/
+__pycache__/
