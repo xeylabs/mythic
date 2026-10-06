@@ -223,6 +223,9 @@ func (e *Engine) Evaluate(in Input) Result {
 	if score > 100 {
 		score = 100
 	}
+	if score < 0 {
+		score = 0
+	}
 
 	decision := Allow
 	next := e.cfg.BaseDifficulty

@@ -87,6 +87,18 @@ func (c Config) validate() error {
 		return fmt.Errorf("risk penalties must be ≤ 100 (the score is a 0-100 contract), got fast=%d per_req=%d max=%d",
 			c.Risk.FastSolvePenalty, c.Risk.PressurePerReq, c.Risk.PressureMax)
 	}
+	// ADR-0010: JA4/ASN advisory caps must respect the 0-100 contract too.
+	// A hostile JA4AnomalyPenalty > 100 would let a single signal dominate;
+	// a negative discount would become a penalty.
+	if c.Risk.JA4AnomalyPenalty < 0 || c.Risk.JA4AnomalyPenalty > 100 {
+		return fmt.Errorf("JA4 anomaly penalty must be within [0,100], got %d", c.Risk.JA4AnomalyPenalty)
+	}
+	if c.Risk.JA4KnownDiscount < 0 || c.Risk.JA4KnownDiscount > 100 {
+		return fmt.Errorf("JA4 known discount must be within [0,100], got %d", c.Risk.JA4KnownDiscount)
+	}
+	if c.Risk.ASNHostingPenalty < 0 || c.Risk.ASNHostingPenalty > 100 {
+		return fmt.Errorf("ASN hosting penalty must be within [0,100], got %d", c.Risk.ASNHostingPenalty)
+	}
 	if c.IPLimit < 1 {
 		return fmt.Errorf("MYTHIC_IP_LIMIT must be ≥ 1, got %d", c.IPLimit)
 	}
