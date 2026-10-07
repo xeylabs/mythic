@@ -70,10 +70,20 @@ export class MythicClient {
   }
 
   async verify(ch: Challenge, sol: Solution): Promise<VerifyResult> {
+    const hints = collectSignals();
+    // Send a fresh behavioral snapshot at verify time as well: the server
+    // scores behavioral signals at both the challenge and verify stages
+    // (see behaviorFrom in server/internal/api/server.go), and the
+    // interaction window during PoW solving is signal-rich. Previously
+    // verify() never sent behavioral data, leaving the server's
+    // verify-stage parsing as dead code in practice.
+    if (this.collector) {
+      hints.behavioral = this.collector.extract();
+    }
     const res = await fetch(this.url("/v1/verify"), {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ challenge_id: ch.id, nonce: sol.nonce, hints: collectSignals() }),
+      body: JSON.stringify({ challenge_id: ch.id, nonce: sol.nonce, hints }),
       signal: this.opts.signal,
     });
     if (!res.ok) throw await toError(res);
@@ -86,14 +96,19 @@ export class MythicClient {
     // Attach behavioral features if collecting.
     if (this.collector) {
       hints.behavioral = this.collector.extract();
-      this.collector.stop();
     }
     const { challenge } = await this.requestChallenge(hints);
     const useWorker = this.opts.useWorker !== false;
     const solution = useWorker
       ? await solveInWorker(challenge, { signal: this.opts.signal })
       : await solve(challenge, { signal: this.opts.signal });
-    return this.verify(challenge, solution);
+    try {
+      // verify() sends a second behavioral snapshot covering the solving window.
+      return await this.verify(challenge, solution);
+    } finally {
+      // Stop collection only after the full flow completes.
+      this.collector?.stop();
+    }
   }
 }
 

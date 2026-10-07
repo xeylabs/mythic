@@ -15,9 +15,11 @@ const challenge: Challenge = {
 };
 
 describe("solveInWorker", () => {
-  test("falls back to main thread when Worker is undefined", async () => {
-    // In Bun, Worker exists, but we test the fallback path via createWorker
-    // throwing — actually test the real worker path instead.
+  test("solves a challenge in a real Worker thread", async () => {
+    // NOTE: this exercises the real Worker path via Bun's Worker
+    // implementation — NOT a real browser (Chromium/Firefox/Safari).
+    // Real-browser coverage does not exist yet; see "Test coverage"
+    // in sdk/js/README.md for the explicit statement.
     const solution = await solveInWorker(challenge);
     expect(solution.challenge_id).toBe(challenge.id);
     expect(typeof solution.nonce).toBe("string");

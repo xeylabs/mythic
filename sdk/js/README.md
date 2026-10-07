@@ -59,5 +59,21 @@ bun test
 bun run build
 ```
 
+## Test coverage — read this before claiming browser support
+
+`bun test` exercises the **real Web Worker code path** (`solveInWorker`)
+through **Bun's Worker implementation**. That is a genuine worker thread,
+but it is **not** Chromium, Firefox, or Safari.
+
+**Explicitly not covered:** no test in this repository has ever run the
+worker inside a real browser. There is no Playwright/headless-browser test.
+As of 2026-10-08 the build environment cannot download browser binaries
+(CDN blocked), so real-browser verification could not even be attempted
+here — this is a known gap, not a passing grade.
+
+If you add real-browser coverage later (Playwright + Chromium is the
+intended tool), update this section and remove this paragraph instead of
+letting the claim drift.
+
 License: AGPL-3.0-or-later — the whole Mythic project ships under one
 license; see [LICENSE](../../LICENSE) at the repository root.

@@ -16,10 +16,16 @@ Status markers: ✅ shipped · 🚧 in progress · 📋 planned.
 - ✅ Redis store (single-use challenges via `GETDEL`, sliding-window IP
   counters) for multi-node ([ADR-0009](adr/0009-redis-store-sliding-window.md))
 - ✅ Multi-key JWKS and zero-downtime key rotation ([ADR-0006](adr/0006-multi-key-jwks-rotation.md))
-- 📋 Network fingerprints: JA4+/HTTP2 fingerprinting, ASN class scoring
-  (datacenter vs residential), optional IP reputation feed
-- 📋 Packaged PoW Web Worker in the SDK (off-main-thread by default)
-- 📋 Origin verification helpers beyond Go (Node, Python)
+- ✅ Network fingerprints: JA4+/HTTP2 fingerprinting, ASN class scoring
+  (datacenter vs residential) as advisory signals
+  ([ADR-0010](adr/0010-ja4-asn-advisory-signals.md)); positive ASN tests
+  against a synthetic fixture included. Optional IP reputation feed:
+  📋 planned.
+- ✅ Packaged PoW Web Worker in the SDK (off-main-thread by default).
+  Known gap, stated explicitly in sdk/js/README.md: no real-browser
+  (Chromium/Firefox/Safari) coverage yet.
+- ✅ Origin verification helpers beyond Go (Node, Python) — both SDKs
+  covered in CI.
 
 ## M2 — Behavioral layer
 
