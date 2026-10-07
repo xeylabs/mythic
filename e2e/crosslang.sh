@@ -24,7 +24,7 @@ trap cleanup EXIT
 
 export GOTMPDIR="${GOTMPDIR:-$HOME/tmp-gobuild}"
 export GOCACHE="${GOCACHE:-$HOME/.cache/go-build}"
-GO="${GO:-$HOME/go/go1.25.1/bin/go}"
+GO="${GO:-$(command -v go 2>/dev/null || echo "$HOME/go/go1.25.1/bin/go")}"
 PORT="${MYTHIC_E2E_PORT:-18080}"
 BASE="http://127.0.0.1:$PORT"
 
